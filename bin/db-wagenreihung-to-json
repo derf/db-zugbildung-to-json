@@ -1,0 +1,162 @@
+#!/usr/bin/env perl
+# Copyright (C) 2020 Daniel Friesel
+#
+# SPDX-License-Identifier: BSD-2-Clause
+
+use strict;
+use warnings;
+use 5.020;
+
+use File::Slurp qw(write_file);
+use IPC::Run3;
+use JSON;
+
+sub show_usage {
+	my ($exit_code) = @_;
+
+	say STDERR "Usage: db-wagenreihung-to-json <wagenreihung.pdf>\n";
+	say STDERR
+"You can obtain the latest PDF from <https://data.deutschebahn.com/dataset/zugbildungsplanzugbildungsplan-zpar>";
+
+	exit $exit_code;
+}
+
+if ( @ARGV == 0 ) {
+	show_usage(1);
+}
+
+run3( [ "which", "pdftotext" ], \undef, \undef, \undef );
+if ($?) {
+	say STDERR
+"Error: db-wagenreihung-to-json depends on the pdftotext utility, but could not find it on this system.\n";
+	say STDERR
+"On Debian and derivatives, it should be available in the 'poppler-utils' package.";
+	exit 2;
+}
+
+my $wr_pdf = $ARGV[0];
+my $wr_txt;
+my $command = [ "pdftotext", "-layout", $wr_pdf, "/dev/stdout" ];
+
+# stdin: /dev/null
+# stdout: $wr_txt
+# stderr: forwarded to terminal
+run3( $command, \undef, \$wr_txt, undef );
+
+if ($?) {
+	my $exit_status = $? >> 8;
+	say STDERR
+	  "\nError: 'pdftotext $wr_pdf' failed (exit status: $exit_status)";
+	exit 2;
+}
+
+my @lines = split( qr{\n}, $wr_txt );
+
+my ( $type, $number );
+my %map;
+
+for my $line (@lines) {
+
+	if ( $line
+		=~ m{ ^ (?<type> [EINR][CJN][ A-Z-]{6}) (?<number> [ 0-9]{2,12}) }x )
+	{
+		$type = $+{type};
+		$type =~ tr{ }{}d;
+		$number = $+{number};
+		$number =~ tr{ }{}d;
+
+		if ( $number !~ m{ ^ \d+ $ }x ) {
+			next;
+		}
+
+		#say "$type $number";
+		$map{$number} = {
+			raw => $type,
+		};
+
+		if ( $type eq 'ICE-A' ) {
+			$map{$number}{type} = 'ICE 1/2/4';
+		}
+		elsif ( $type eq 'ICE-W' ) {
+			$map{$number}{type}  = 'ICE 3';
+			$map{$number}{short} = '3';
+		}
+		elsif ( $type eq 'ICE' ) {
+			$map{$number}{type} = 'ICE 1/2/4';
+		}
+		elsif ( $type eq 'ICE-T' ) {
+			$map{$number}{type}  = 'ICE T';
+			$map{$number}{short} = 'T';
+		}
+		elsif ( $type eq 'IC-A' ) {
+			$map{$number}{type}  = 'Metropolitan';
+			$map{$number}{short} = 'M';
+		}
+		elsif ( $type eq 'IC-D' ) {
+			$map{$number}{type}  = 'IC2';
+			$map{$number}{short} = '2';
+		}
+		elsif ( $type eq 'IC-E' ) {
+			$map{$number}{type}  = 'IC2 KISS';
+			$map{$number}{short} = '2';
+		}
+		else {
+			$map{$number}{type} = $type;
+		}
+	}
+	elsif ( $line =~ m{^LPF} ) {
+
+		# Not in passenger service ("Leehrfahrt"). Ignore it for now.
+		# FWIW, LPF(T) can be further distinguished:
+		# LPFT-A: ICE BR 401/402
+		# LPFT-B: ICE BR 412
+		# LPFT-T: ICE BR 411 / 415 / 605
+		# LPFT-W: ICE BR 403 / 406
+		$number = undef;
+	}
+
+	# ICE types can be further distinguished by rolling stock. For instance,
+	# ICE 4 is the only ICE-A variant with restaurant and first-class seats
+	# in the same wagon ("ARmz").
+	elsif ( $number and $line =~ m{^\d*\s+ARmz} ) {
+		if ( $map{$number}{type} eq 'ICE 1/2/4' ) {
+			$map{$number}{type}  = 'ICE 4';
+			$map{$number}{short} = '4';
+		}
+	}
+	elsif ( $number and $line =~ m{^\d*\s+WRmz} ) {
+
+		#say "ICE 1 / ICE 3 Redesign (WRmz)";
+		if ( $map{$number}{type} eq 'ICE 1/2/4' ) {
+			$map{$number}{type}  = 'ICE 1';
+			$map{$number}{short} = '1';
+		}
+		elsif ( $map{$number}{type} eq 'ICE 3' ) {
+			$map{$number}{type}  = 'ICE 3 Redesign';
+			$map{$number}{short} = '3R';
+		}
+	}
+	elsif ( $number and $line =~ m{^\d*\s+WRmbsz} ) {
+
+		#say "ICE 2 (WRmbsz)";
+		if ( $map{$number}{type} eq 'ICE 1/2/4' ) {
+			$map{$number}{type}  = 'ICE 2';
+			$map{$number}{short} = '2';
+		}
+	}
+	elsif ( $number and $line =~ m{^\d*\s+Bpmbsz} ) {
+
+		#say "ICE 3 Velaro";
+		if ( $map{$number}{type} eq 'ICE 3' ) {
+			$map{$number}{type}  = 'ICE 3 Velaro';
+			$map{$number}{short} = '3V';
+		}
+	}
+
+	if ( $number and $line =~ m{^\d*\s+(D?(A|AB|B|W)R?D?[impvw]\S*)} ) {
+		$map{$number}{wagons}{$1} = \1;
+	}
+}
+
+# use canonical output (i.e., sort hash keys) to allow for easy diffing.
+say JSON->new->utf8->canonical->encode( {%map} );
