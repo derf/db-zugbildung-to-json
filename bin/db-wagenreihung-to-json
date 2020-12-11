@@ -54,6 +54,7 @@ my @lines = split( qr{\n}, $wr_txt );
 
 my ( $type, $number );
 my %map;
+my %wagon_map;
 
 for my $line (@lines) {
 
@@ -153,8 +154,29 @@ for my $line (@lines) {
 		}
 	}
 
-	if ( $number and $line =~ m{^\d*\s+(D?(A|AB|B|W)R?D?[impvw]\S*)} ) {
+	if (    $number
+		and $line
+		=~ m{ ^ \d* \s{1,10} (?<type> D? (A|AB|B|W) R? D? [aeimpvw] \S* ) \s* (?<number> \d+ )? (?: $ | \s{6} ) }x
+	  )
+	{
+		push( @{ $wagon_map{$number} }, [ $+{type}, $+{number} ] );
+
+		#$map{$number}{has_wagon}{$1} = \1;
 		$map{$number}{wagons}{$1} = \1;
+	}
+}
+
+for my $train_number ( keys %map ) {
+	my $wagon_numbers_ok = 1;
+	for my $wagon ( @{ $wagon_map{$train_number} // [] } ) {
+		if ( not $wagon->[1] ) {
+			$wagon_numbers_ok = 0;
+		}
+	}
+	if ($wagon_numbers_ok) {
+		for my $wagon ( @{ $wagon_map{$train_number} // [] } ) {
+			$map{$train_number}{wagon}{ $wagon->[1] } = $wagon->[0];
+		}
 	}
 }
 
