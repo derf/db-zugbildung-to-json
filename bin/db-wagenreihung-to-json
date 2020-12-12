@@ -204,15 +204,40 @@ for my $line (@lines) {
 
 for my $train_number ( keys %map ) {
 	my $wagon_numbers_ok = 1;
+	my $wagon_types_ok   = 1;
+	my %bincount;
+	my %type_by_wagon_number;
 	for my $wagon ( @{ $wagon_map{$train_number} // [] } ) {
-		if ( not $wagon->[1] ) {
+		my ( $wagon_type, $wagon_number ) = @{$wagon};
+		if ( not $wagon_number ) {
 			$wagon_numbers_ok = 0;
+		}
+		else {
+			$bincount{$wagon_number}++;
+			push( @{ $type_by_wagon_number{$wagon_number} }, $wagon_type );
 		}
 	}
 	if ($wagon_numbers_ok) {
 		for my $wagon ( @{ $wagon_map{$train_number} // [] } ) {
-			$map{$train_number}{wagon}{ $wagon->[1] } = $wagon->[0];
+			my ( $wagon_type, $wagon_number ) = @{$wagon};
+			$map{$train_number}{wagon}{ $wagon->[1] } = $wagon_type;
+			if ( $bincount{$wagon_number} > 1 ) {
+				if ( $type_by_wagon_number{$wagon_number}[0] ne
+					$type_by_wagon_number{$wagon_number}[1] )
+				{
+					$wagon_types_ok = 0;
+				}
+			}
 		}
+	}
+	if ( not $wagon_types_ok ) {
+
+		# train type may differ depending on date of week or similar. We don't
+		# parse/handle that yet.
+		delete $map{$train_number}{type};
+		delete $map{$train_number}{short};
+		delete $map{$train_number}{wagon};
+		delete $map{$train_number}{has_wagon};
 	}
 }
 
