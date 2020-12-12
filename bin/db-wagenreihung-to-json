@@ -172,6 +172,9 @@ for my $line (@lines) {
 		$map{$number}{route} .= $+{route};
 	}
 	elsif ( $state eq "route" and $line eq "" ) {
+		$state = "conditions";
+	}
+	elsif ( $state eq "conditions" and $line =~ m{ Hg | Tfz | BrH }x ) {
 		$state = "details";
 	}
 
@@ -180,10 +183,22 @@ for my $line (@lines) {
 		=~ m{ ^ \d* \s{1,10} (?<type> D? (WL)? (A|AB|B|W) R? D? [aceimpvw] \S* ) \s* (?<number> \d+ )? (?: $ | \s{6} ) }x
 	  )
 	{
+		$state = "wagonorder";
 		push( @{ $wagon_map{$number} }, [ $+{type}, $+{number} ] );
 
 		#$map{$number}{has_wagon}{$1} = \1;
 		$map{$number}{wagons}{$1} = \1;
+	}
+
+	if ( $state eq "conditions" and length($line) and $line =~ m{ \S }x ) {
+		push( @{ $map{$number}{conditions} }, $line );
+	}
+
+	if (    $state eq "details"
+		and length($line)
+		and $line =~ m{ Hg | Tfz | BrH }x )
+	{
+		push( @{ $map{$number}{details} }, $line );
 	}
 }
 
