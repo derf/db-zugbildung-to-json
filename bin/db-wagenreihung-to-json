@@ -6,6 +6,7 @@
 use strict;
 use warnings;
 use 5.020;
+use utf8;
 
 use File::Slurp qw(write_file);
 use IPC::Run3;
@@ -19,6 +20,137 @@ sub show_usage {
 "You can obtain the latest PDF from <https://data.deutschebahn.com/dataset/zugbildungsplanzugbildungsplan-zpar>";
 
 	exit $exit_code;
+}
+
+my @weekdays = (qw(Mo Di Mi Do Fr Sa So));
+my @months   = (qw(0 I II III IV V VI VII VIII IX X XI XII));
+my %weekday  = map { ( $weekdays[$_] => $_ ) } ( 0 .. $#weekdays );
+my %month    = map { ( $months[$_] => $_ ) } ( 0 .. $#months );
+
+my %valid;
+my $year;
+
+sub parse_weekday_range {
+	my ($range) = @_;
+	my $ret = [ ( \0 ) x 7 ];
+
+	if ( length($range) == 2 ) {
+		$ret->[ $weekday{$range} ] = \1;
+		return $ret;
+	}
+
+	my ( $start, $end ) = split( qr{-}, $range );
+
+	for my $i ( $weekday{$start} .. $weekday{$end} ) {
+		$ret->[$i] = \1;
+	}
+
+	return $ret;
+}
+
+sub parse_weekdays {
+	my ($text) = @_;
+
+	if ( $text eq 'tgl.' ) {
+		return [ ( \1 ) x 7 ];
+	}
+
+	my $ret = [ ( \0 ) x 7 ];
+
+	for my $range ( split( qr{[+]}, $text ) ) {
+		my $new_ret = parse_weekday_range($range);
+		for my $i ( 0 .. 6 ) {
+			if ( ${ $new_ret->[$i] } ) {
+				$ret->[$i] = \1;
+			}
+		}
+	}
+	return $ret;
+}
+
+sub parse_dates {
+	my ($text) = @_;
+
+	my @valid_ranges;
+	my @valid_dates;
+	my @invalid_dates;
+
+	my $mode = "range";
+	for my $date ( split( qr{,\s*}, $text ) ) {
+		if ( $date =~ m{^auch} ) {
+			$mode = "extra";
+		}
+		elsif ( $date =~ m{^nicht} ) {
+			$mode = "except";
+		}
+		elsif ( $date =~ m{^(ab|bis)} ) {
+			$mode = "range";
+		}
+
+		if (    $mode eq 'range'
+			and $date =~ m{ ^ ab \s* (?<day> \d{2} ) \. (?<month> [^.]* ) }x )
+		{
+			push( @valid_ranges, [ [ $+{month}, $+{day} ], undef ] );
+		}
+		elsif ( $mode eq 'range'
+			and $date =~ m{ ^ bis \s* (?<day> \d{2} ) \. (?<month> [^.]* ) }x )
+		{
+			push( @valid_ranges, [ undef, [ $+{month}, $+{day} ] ] );
+		}
+		elsif ( $date
+			=~ m{ ^ (?<fd> \d{2} ) \. (?<fm> [^-]+ )\. - (?<td> \d{2} ) \. (?<tm> [^.]* ) }x
+		  )
+		{
+			push( @valid_ranges, [ [ $+{fm}, $+{fd} ], [ $+{tm}, $+{td} ] ] );
+		}
+	}
+
+	my %ret = (
+		valid   => [],
+		invalid => [],
+	);
+
+	for my $range (@valid_ranges) {
+		my $from_date    = $valid{from};
+		my $through_date = $valid{through};
+		if ( $range->[0] ) {
+			$from_date = sprintf( '%04d-%02d-%02d',
+				$year, $month{ $range->[0][0] },
+				$range->[0][1] );
+		}
+		if ( $range->[1] ) {
+			$through_date = sprintf( '%04d-%02d-%02d',
+				$year, $month{ $range->[1][0] },
+				$range->[1][1] );
+		}
+		push( @{ $ret{valid} }, "${from_date}/${through_date}" );
+	}
+
+	return %ret;
+}
+
+sub parse_condition {
+	my ($line) = @_;
+	my %ret;
+
+	if ( $line
+		=~ m{ ^ \s* (?<from> .*? ) \s - \s (?<to> [^,]+ ) , \s* (?<weekdays> (Mo|Di|Mi|Do|Fr|Sa|So|tgl[.]|[+]|-)+) \s* (?<dates> .* ) $ }x
+	  )
+	{
+		$ret{from}     = $+{from};
+		$ret{to}       = $+{to};
+		$ret{weekdays} = parse_weekdays( $+{weekdays} );
+		my %validity = parse_dates( $+{dates} );
+		while ( my ( $k, $v ) = each %validity ) {
+			$ret{$k} = $v;
+		}
+		$ret{raw} = $line;
+	}
+	else {
+		$ret{raw} = $line;
+	}
+
+	return {%ret};
 }
 
 if ( @ARGV == 0 ) {
@@ -57,9 +189,30 @@ my ( $type, $number );
 my %map;
 my %wagon_map;
 
-my $state = "";
+my $state = "intro";
 
 for my $line (@lines) {
+
+	if ( $line
+		=~ m{ ^ \s* Gültigkeit: \s* (?<fd> \d{2} ) \. (?<fm> \d{2} ) \. (?<fy> \d{4} ) \s* – \s* (?<td> \d{2} ) \. (?<tm> \d{2} ) \. (?<ty> \d{4} ) }x
+	  )
+	{
+		%valid = (
+			"from"    => sprintf( "%04d-%02d-%02d", $+{fy}, $+{fm}, $+{fd} ),
+			"through" => sprintf( "%04d-%02d-%02d", $+{ty}, $+{tm}, $+{td} ),
+		);
+		$year = $+{ty};
+		$map{valid} = {%valid};
+	}
+
+	if ( $state eq "intro" ) {
+		if ( $line =~ m{ ^ [A-Z] [.] \s* Zugbildungen $ }x ) {
+			$state = "";
+		}
+		else {
+			next;
+		}
+	}
 
 	if ( $line
 		=~ m{ ^ (?<type> [EINR][CJN][ A-Z-]{6}) (?<number> [ 0-9]{2,12}) }x )
@@ -187,11 +340,12 @@ for my $line (@lines) {
 		push( @{ $wagon_map{$number} }, [ $+{type}, $+{number} ] );
 
 		#$map{$number}{has_wagon}{$1} = \1;
+
 		$map{$number}{wagons}{$1} = \1;
 	}
 
 	if ( $state eq "conditions" and length($line) and $line =~ m{ \S }x ) {
-		push( @{ $map{$number}{conditions} }, $line );
+		push( @{ $map{$number}{conditions} }, parse_condition($line) );
 	}
 
 	if (    $state eq "details"
@@ -242,4 +396,5 @@ for my $train_number ( keys %map ) {
 }
 
 # use canonical output (i.e., sort hash keys) to allow for easy diffing.
+#say JSON->new->utf8->canonical->encode( {valid => {%valid}, train => {%map}} );
 say JSON->new->utf8->canonical->encode( {%map} );
