@@ -177,7 +177,7 @@ for my $line (@lines) {
 
 	if (    $number
 		and $line
-		=~ m{ ^ \d* \s{1,10} (?<type> D? (A|AB|B|W) R? D? [aeimpvw] \S* ) \s* (?<number> \d+ )? (?: $ | \s{6} ) }x
+		=~ m{ ^ \d* \s{1,10} (?<type> D? (WL)? (A|AB|B|W) R? D? [aceimpvw] \S* ) \s* (?<number> \d+ )? (?: $ | \s{6} ) }x
 	  )
 	{
 		push( @{ $wagon_map{$number} }, [ $+{type}, $+{number} ] );
