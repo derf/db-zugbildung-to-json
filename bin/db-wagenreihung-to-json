@@ -36,7 +36,7 @@ if ($?) {
 
 my $wr_pdf = $ARGV[0];
 my $wr_txt;
-my $command = [ "pdftotext", "-layout", $wr_pdf, "/dev/stdout" ];
+my $command = [ "pdftotext", "-layout", "-nopgbrk", $wr_pdf, "/dev/stdout" ];
 
 # stdin: /dev/null
 # stdout: $wr_txt
