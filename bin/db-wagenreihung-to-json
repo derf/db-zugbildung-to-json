@@ -41,7 +41,8 @@ my $command = [ "pdftotext", "-layout", "-nopgbrk", $wr_pdf, "/dev/stdout" ];
 # stdin: /dev/null
 # stdout: $wr_txt
 # stderr: forwarded to terminal
-run3( $command, \undef, \$wr_txt, undef );
+run3( $command, \undef, \$wr_txt, undef,
+	{ binmode_stdout => ':encoding(utf-8)' } );
 
 if ($?) {
 	my $exit_status = $? >> 8;
@@ -56,6 +57,8 @@ my ( $type, $number );
 my %map;
 my %wagon_map;
 
+my $state = "";
+
 for my $line (@lines) {
 
 	if ( $line
@@ -69,6 +72,8 @@ for my $line (@lines) {
 		if ( $number !~ m{ ^ \d+ $ }x ) {
 			next;
 		}
+
+		$state = "train_no";
 
 		#say "$type $number";
 		$map{$number} = {
@@ -114,6 +119,12 @@ for my $line (@lines) {
 		# LPFT-T: ICE BR 411 / 415 / 605
 		# LPFT-W: ICE BR 403 / 406
 		$number = undef;
+		$state  = "";
+	}
+
+	elsif ( $state eq "train_no" and $line =~ m{ ^ \s{5} \S }x ) {
+		$state = "route";
+		$map{$number}{route} = "";
 	}
 
 	# ICE types can be further distinguished by rolling stock. For instance,
@@ -152,6 +163,16 @@ for my $line (@lines) {
 			$map{$number}{type}  = 'ICE 3 Velaro';
 			$map{$number}{short} = '3V';
 		}
+	}
+
+	if ( $state eq "route" and $line =~ m{ ^ \s{5} (?<route> .* ) $ }x ) {
+		if ( length( $map{$number}{route} ) ) {
+			$map{$number}{route} .= ' ';
+		}
+		$map{$number}{route} .= $+{route};
+	}
+	elsif ( $state eq "route" and $line eq "" ) {
+		$state = "details";
 	}
 
 	if (    $number
