@@ -275,7 +275,7 @@ for my $line (@lines) {
 		$state  = "";
 	}
 
-	elsif ( $state eq "train_no" and $line =~ m{ ^ \s{3,5} \S }x ) {
+	elsif ( $state eq "train_no" and $line =~ m{ ^ \s{2,6} \S }x ) {
 		$state = "route";
 		$map{$number}{route} = "";
 	}
@@ -318,7 +318,7 @@ for my $line (@lines) {
 		}
 	}
 
-	if ( $state eq "route" and $line =~ m{ ^ \s{3,5} (?<route> .* ) $ }x ) {
+	if ( $state eq "route" and $line =~ m{ ^ \s{2,6} (?<route> .* ) $ }x ) {
 		if ( length( $map{$number}{route} ) ) {
 			$map{$number}{route} .= ' ';
 		}
