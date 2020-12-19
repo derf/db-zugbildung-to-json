@@ -326,6 +326,7 @@ for my $line (@lines) {
         # train. Observed on IC 2006 Stuttgart – Dortmund, which is planned as
         # IC-D, but actually uses IC1 wagons.
 			$map{$number}{type} = 'IC';
+			delete $map{$number}{short};
 		}
 	}
 
