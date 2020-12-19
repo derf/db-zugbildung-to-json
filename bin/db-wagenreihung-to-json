@@ -317,6 +317,17 @@ for my $line (@lines) {
 			$map{$number}{short} = '3V';
 		}
 	}
+	elsif ( $number and $line =~ m{^\d*\s+[AB][pv]m} ) {
+		if ( $map{$number}{type} eq 'IC2' or $map{$number}{type} eq 'IC2 KISS' )
+		{
+        # Zugbildungsplan go home, you're drunk. Wagons of IC2 double decker
+        # trains must start with D (indicating that they double decker
+        # wagons). If an IC2 train has other wagons, it isn't really an IC2
+        # train. Observed on IC 2006 Stuttgart – Dortmund, which is planned as
+        # IC-D, but actually uses IC1 wagons.
+			$map{$number}{type} = 'IC';
+		}
+	}
 
 	if ( $state eq "route" and $line =~ m{ ^ \s{2,6} (?<route> .* ) $ }x ) {
 		if ( length( $map{$number}{route} ) ) {
