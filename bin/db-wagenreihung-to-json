@@ -351,9 +351,7 @@ for my $line (@lines) {
 		$state = "wagonorder";
 		push( @{ $wagon_map{$number} }, [ $+{type}, $+{number} ] );
 
-		#$map{$number}{has_wagon}{$1} = \1;
-
-		$map{$number}{wagons}{$1} = \1;
+		$map{$number}{has_wagon}{$1} = \1;
 	}
 
 	if ( $state eq "conditions" and length($line) and $line =~ m{ \S }x ) {
@@ -393,8 +391,7 @@ for my $train_number ( keys %map ) {
 				next;
 			}
 
-			#push(@{$map{$train_number}{wagon_list}}, $wagon);
-			$map{$train_number}{wagon}{ $wagon->[1] } = $wagon_type;
+			push( @{ $map{$train_number}{wagons} }, $wagon );
 			if ( $bincount{$wagon_number} > 1 ) {
 				if ( $type_by_wagon_number{$wagon_number}[0] ne
 					$type_by_wagon_number{$wagon_number}[1] )
@@ -410,11 +407,15 @@ for my $train_number ( keys %map ) {
 		# parse/handle that yet.
 		delete $map{$train_number}{type};
 		delete $map{$train_number}{short};
-		delete $map{$train_number}{wagon};
+		delete $map{$train_number}{wagons};
 		delete $map{$train_number}{has_wagon};
 	}
 }
 
 # use canonical output (i.e., sort hash keys) to allow for easy diffing.
-#say JSON->new->utf8->canonical->encode( {valid => {%valid}, train => {%map}} );
-say JSON->new->utf8->canonical->encode( {%map} );
+say JSON->new->utf8->canonical->encode(
+	{
+		valid => {%valid},
+		train => {%map}
+	}
+);
