@@ -345,7 +345,7 @@ for my $line (@lines) {
 
 	if (    $number
 		and $line
-		=~ m{ ^ \d* \s{1,10} (?<type> D? (WL)? (A|AB|B|W) R? D? [aceimpvw] \S* ) \s* (?<number> \d+ )? (?: $ | \s{3} ) }x
+		=~ m{ ^ \d* \s{1,10} (?<type> ( D? (WL)? (A|AB|B|W) R? D? [aceimpvw] \S* ) | 40[1-9]([.][0-9])? ) \s* (?<number> \d+ )? (?: $ | \s{3} ) }x
 	  )
 	{
 		$state = "wagonorder";
@@ -375,6 +375,9 @@ for my $train_number ( keys %map ) {
 	my %type_by_wagon_number;
 	for my $wagon ( @{ $wagon_map{$train_number} // [] } ) {
 		my ( $wagon_type, $wagon_number ) = @{$wagon};
+		if ( $wagon_type =~ m{40[1-9]} ) {
+			next;
+		}
 		if ( not $wagon_number ) {
 			$wagon_numbers_ok = 0;
 		}
@@ -386,6 +389,11 @@ for my $train_number ( keys %map ) {
 	if ($wagon_numbers_ok) {
 		for my $wagon ( @{ $wagon_map{$train_number} // [] } ) {
 			my ( $wagon_type, $wagon_number ) = @{$wagon};
+			if ( $wagon_type =~ m{40[1-9]} ) {
+				next;
+			}
+
+			#push(@{$map{$train_number}{wagon_list}}, $wagon);
 			$map{$train_number}{wagon}{ $wagon->[1] } = $wagon_type;
 			if ( $bincount{$wagon_number} > 1 ) {
 				if ( $type_by_wagon_number{$wagon_number}[0] ne
