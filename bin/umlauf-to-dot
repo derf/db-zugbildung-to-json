@@ -1,0 +1,100 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use 5.020;
+use utf8;
+
+use File::Slurp qw(read_file);
+use JSON;
+use List::Util qw(uniq);
+
+sub show_usage {
+	my ($exit_code) = @_;
+
+	say STDERR
+"Usage: umlauf-to-dot <wagenreihung.json> [line number] | dot -Tpng > umlauf.png";
+
+	exit $exit_code;
+}
+
+sub contained_in {
+	my ( $value, @list ) = @_;
+
+	for my $elem (@list) {
+		if ( $elem eq $value ) {
+			return 1;
+		}
+	}
+	return;
+}
+
+sub format_train {
+	my ( $train_no, $train ) = @_;
+
+	return sprintf( '"%s %d\n%s\n%s"',
+		$train->{type} // 'Zug',
+		$train_no,
+		$train->{route}{start} // $train->{route}{preStart} // '?',
+		$train->{route}{end}   // $train->{route}{postEnd}  // '?' );
+}
+
+if ( @ARGV < 1 ) {
+	show_usage(1);
+}
+
+my ( $file, $line ) = @ARGV;
+
+my $file_content = read_file($file);
+my $json         = JSON->new->utf8->decode($file_content);
+
+my $map = $json->{train};
+
+my @train_numbers;
+if ($line) {
+	my @queue = ($line);
+
+	while (@queue) {
+		my $train_number = pop @queue;
+		push( @train_numbers, $train_number );
+		my @candidates;
+		push( @candidates, @{ $map->{$train_number}{cycle}{from} // [] } );
+		push( @candidates, @{ $map->{$train_number}{cycle}{to}   // [] } );
+		@candidates = uniq @candidates;
+		@candidates
+		  = grep { not contained_in( $_, @train_numbers, @queue ) } @candidates;
+		if (@candidates) {
+			printf( "# handle %s -> push %s\n",
+				$train_number, join( " ", @candidates ) );
+		}
+		push( @queue, @candidates );
+	}
+}
+else {
+	@train_numbers = keys %{$map};
+}
+
+my @output;
+
+for my $train_number (@train_numbers) {
+	for my $from ( @{ $map->{$train_number}{cycle}{from} } ) {
+		push(
+			@output,
+			sprintf( "%s -> %s;",
+				format_train( $from,         $map->{$from} ),
+				format_train( $train_number, $map->{$train_number} ) )
+		);
+	}
+	for my $to ( @{ $map->{$train_number}{cycle}{to} } ) {
+		push(
+			@output,
+			sprintf( "%s -> %s;",
+				format_train( $train_number, $map->{$train_number} ),
+				format_train( $to,           $map->{$to} ) )
+		);
+	}
+}
+
+say "digraph Umlauf {";
+say join( "\n", uniq @output );
+say "}"
