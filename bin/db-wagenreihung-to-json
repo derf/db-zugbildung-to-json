@@ -398,11 +398,41 @@ for my $line (@lines) {
 	}
 }
 
-#for my $train ( values %map ) {
-#	if ($train->{route} and $train->{route} =~ m{ - }) {
-#		my @route_parts = split(qr{ - }, $train->{route});
-#	}
-#}
+for my $train ( values %map ) {
+	if ( not $train->{route} ) {
+		next;
+	}
+
+	my $route = $train->{route};
+	my @parts = split( qr{ - }, $route );
+
+	if ( @parts < 2 ) {
+		$train->{route} = { raw => $route };
+		next;
+	}
+	my ( $pre_start, $start, @middle, $end, $post_end );
+
+	if ( $parts[0] =~ m{ ^ [(] }x ) {
+		$pre_start = shift @parts;
+		$pre_start =~ s{ ^ [(] (.*) [)] $ }{$1}x;
+	}
+
+	if ( $parts[-1] =~ m{ ^ [(] }x ) {
+		$post_end = pop @parts;
+		$post_end =~ s{ ^ [(] (.*) [)] $ }{$1}x;
+	}
+
+	$start = shift @parts;
+	$end   = pop @parts;
+
+	$train->{route} = {
+		preStart => $pre_start,
+		start    => $start,
+		middle   => scalar @parts ? [@parts] : undef,
+		end      => $end,
+		postEnd  => $post_end,
+	};
+}
 
 for my $train ( values %map ) {
 	if ( @{ $train->{wagonorder_notes} // [] } == 0 ) {
