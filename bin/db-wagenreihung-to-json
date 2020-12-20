@@ -558,11 +558,14 @@ for my $train_number ( keys %map ) {
 
 # broken umlauf (indentation changes on page break)
 delete $map{104}{cycle};
+delete $map{1588}{cycle};
+delete $map{1700}{cycle};
 delete $map{77689}{cycle};
 delete $map{78112}{cycle};
 
 # indentation change between consecutive lines. wat.
 delete $map{939}{cycle};
+delete $map{2310}{cycle};
 
 # use canonical output (i.e., sort hash keys) to allow for easy diffing.
 say JSON->new->utf8->canonical->encode(
