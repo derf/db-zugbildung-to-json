@@ -368,7 +368,7 @@ for my $line (@lines) {
 
 	if (    $number
 		and $line
-		=~ m{ ^ \d* \s{1,10} (?<type> ( D? (WL)? (A|AB|B|W) R? D? [aceimpvw] \S* ) | 40[1-9]([.][0-9])? ) \s* (?<number> \d+ )? (?: $ | \s{3} (?<rest> .* ) $ ) }x
+		=~ m{ ^ \d* \s{1,10} (?<type> ( D? (WL)? (A|AB|B|W) R? D? [acdehimpvw] \S* ) | 40[1-9]([.][0-9])? ) \s* (?<number> \d+ )? (?: $ | \s{3} (?<rest> .* ) $ ) }x
 	  )
 	{
 		$state = "wagonorder";
