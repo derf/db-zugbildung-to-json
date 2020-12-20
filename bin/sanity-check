@@ -1,0 +1,51 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use 5.020;
+use utf8;
+
+use File::Slurp qw(read_file);
+use JSON;
+
+sub show_usage {
+	my ($exit_code) = @_;
+
+	say STDERR "Usage: sanity-check <zugbildung.json>";
+
+	exit $exit_code;
+}
+
+binmode( STDOUT, ':encoding(utf-8)' );
+
+if ( @ARGV < 1 ) {
+	show_usage(1);
+}
+
+my ($file) = @ARGV;
+
+my $file_content = read_file($file);
+my $json         = JSON->new->utf8->decode($file_content);
+
+my $map = $json->{train};
+
+for my $train_number ( sort { $a <=> $b } keys %{$map} ) {
+	for my $cycle_from ( @{ $map->{$train_number}{cycle}{from} // [] } ) {
+		if ( not exists $map->{$cycle_from} ) {
+			printf(
+				"%s %d references unknown train %d\n",
+				$map->{$train_number}{raw},
+				$train_number, $cycle_from
+			);
+		}
+	}
+	for my $cycle_to ( @{ $map->{$train_number}{cycle}{to} // [] } ) {
+		if ( not exists $map->{$cycle_to} ) {
+			printf(
+				"%s %d references unknown train %d\n",
+				$map->{$train_number}{raw},
+				$train_number, $cycle_to
+			);
+		}
+	}
+}
