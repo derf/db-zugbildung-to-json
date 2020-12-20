@@ -13,7 +13,7 @@ sub show_usage {
 	my ($exit_code) = @_;
 
 	say STDERR
-"Usage: umlauf-to-dot <wagenreihung.json> [line number] | dot -Tpng > umlauf.png";
+"Usage: umlauf-to-dot <wagenreihung.json> [line number] [limit] | dot -Tpng > umlauf.png";
 
 	exit $exit_code;
 }
@@ -33,17 +33,19 @@ sub format_train {
 	my ( $train_no, $train ) = @_;
 
 	return sprintf( '"%s %d\n%s\n%s"',
-		$train->{type} // 'Zug',
+		$train->{type} // $train->{raw} // 'Zug',
 		$train_no,
 		$train->{route}{start} // $train->{route}{preStart} // '?',
 		$train->{route}{end}   // $train->{route}{postEnd}  // '?' );
 }
 
+binmode( STDOUT, ':encoding(utf-8)' );
+
 if ( @ARGV < 1 ) {
 	show_usage(1);
 }
 
-my ( $file, $line ) = @ARGV;
+my ( $file, $line, $limit ) = @ARGV;
 
 my $file_content = read_file($file);
 my $json         = JSON->new->utf8->decode($file_content);
@@ -52,22 +54,30 @@ my $map = $json->{train};
 
 my @train_numbers;
 if ($line) {
-	my @queue = ($line);
+	my @queue = ( [ $line, 0 ] );
 
 	while (@queue) {
-		my $train_number = pop @queue;
+		my ( $train_number, $distance ) = @{ pop @queue };
 		push( @train_numbers, $train_number );
+
+		if ( $limit and $distance > $limit ) {
+			next;
+		}
+
 		my @candidates;
 		push( @candidates, @{ $map->{$train_number}{cycle}{from} // [] } );
 		push( @candidates, @{ $map->{$train_number}{cycle}{to}   // [] } );
+
 		@candidates = uniq @candidates;
 		@candidates
 		  = grep { not contained_in( $_, @train_numbers, @queue ) } @candidates;
+
 		if (@candidates) {
 			printf( "# handle %s -> push %s\n",
 				$train_number, join( " ", @candidates ) );
 		}
-		push( @queue, @candidates );
+
+		push( @queue, map { [ $_, $distance + 1 ] } @candidates );
 	}
 }
 else {
