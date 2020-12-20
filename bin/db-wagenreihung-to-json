@@ -512,10 +512,10 @@ for my $train_number ( keys %map ) {
 		my ( $wagon_type, $wagon_number ) = @{$wagon};
 		if ( $wagon_type =~ m{ 40[1-9] | 146 }x ) {
 
-			#push( @{ $type_by_wagon_number{$wagon_number} }, $wagon_type );
+			# Locomotives do not have a wagon number. That's OK.
 			next;
 		}
-		if ( not $wagon_number ) {
+		elsif ( not $wagon_number ) {
 			$wagon_numbers_ok = 0;
 		}
 		else {
@@ -526,11 +526,13 @@ for my $train_number ( keys %map ) {
 	if ($wagon_numbers_ok) {
 		for my $wagon ( @{ $wagon_map{$train_number} // [] } ) {
 			my ( $wagon_type, $wagon_number ) = @{$wagon};
+
+			push( @{ $map{$train_number}{wagons} }, $wagon );
+
 			if ( $wagon_type =~ m{ 40[1-9] | 146 }x ) {
 				next;
 			}
 
-			push( @{ $map{$train_number}{wagons} }, $wagon );
 			if ( $bincount{$wagon_number} > 1 ) {
 				if ( $type_by_wagon_number{$wagon_number}[0] ne
 					$type_by_wagon_number{$wagon_number}[1] )
