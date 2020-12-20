@@ -203,7 +203,6 @@ for my $line (@lines) {
 			"through" => sprintf( "%04d-%02d-%02d", $+{ty}, $+{tm}, $+{td} ),
 		);
 		$year = $+{ty};
-		$map{valid} = {%valid};
 	}
 
 	if ( $state eq "intro" ) {
@@ -441,8 +440,11 @@ for my $train ( values %map ) {
 	my $first_line  = $train->{wagonorder_notes}[0];
 	my $from_offset = 0;
 	my $to_offset   = 0;
+
+	# International trains (e.g. EC 8) are super special and may have another
+	# identifier after the "cycle to" train number.
 	if ( $first_line
-		=~ m{ ^ (?<lead> .*? [^0-9] ) (?<from> \d+ ) (?<middle> [A-Z ]+ ) (?<to> \d+ ) $ }x
+		=~ m{ ^ (?<lead> .*? [^0-9] ) (?<from> \d+ ) (?<middle> [A-Z ]+ ) (?<to> \d+ ) (?: \s+ \d+ )? $ }x
 	  )
 	{
 		$from_offset = length( $+{lead} );
@@ -451,7 +453,15 @@ for my $train ( values %map ) {
 	if ( not $from_offset ) {
 		next;
 	}
-	for my $line ( @{ $train->{wagonorder_notes} } ) {
+	for my $i_line ( @{ $train->{wagonorder_notes} } ) {
+
+       # $i_line is an lvalue, so changes in $i_line end up in wagonorder_notes.
+       # We don't want that.
+		my $line = substr( $i_line, 0 );
+
+		# Some cycles do not have a "from" entry, but they do have an odd
+		# F-identifier, which confuses the cycle detection code. remove it.
+		$line =~ s{F[0-9] [0-9]{3}}{.. ...};
 		if ( length($line) <= $from_offset ) {
 			next;
 		}
@@ -459,8 +469,11 @@ for my $train ( values %map ) {
 		if ( $umlauf =~ m{ ^ (\d+) }x ) {
 			push( @{ $train->{cycle}{from} }, $1 );
 		}
-		if ( length($line) > $to_offset and $line =~ m{ (\d+) $ }x ) {
-			push( @{ $train->{cycle}{to} }, $1 );
+		if ( length($line) > $to_offset ) {
+			$umlauf = substr( $line, $to_offset );
+			if ( $umlauf =~ m{ ^ (\d+) }x ) {
+				push( @{ $train->{cycle}{to} }, $1 );
+			}
 		}
 	}
 	if ( exists $train->{cycle}{from} ) {
