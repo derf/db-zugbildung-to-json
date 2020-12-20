@@ -368,7 +368,7 @@ for my $line (@lines) {
 
 	if (    $number
 		and $line
-		=~ m{ ^ \d* \s{1,10} (?<type> ( D? (WL)? (A|AB|B|W) R? D? [acdehimpvw] \S* ) | 40[1-9]([.][0-9])? ) \s* (?<number> \d+ )? (?: $ | \s{3} (?<rest> .* ) $ ) }x
+		=~ m{ ^ \d* \s{1,10} (?<type> ( D? (WL)? (A|AB|B|W) R? D? [acdehimpvw] \S* ) | 40[1-9]([.][0-9])? | 146([.][0-9])? ) \s* (?<number> \d+ )? (?: $ | \s{3} (?<rest> .* ) $ ) }x
 	  )
 	{
 		$state = "wagonorder";
@@ -509,7 +509,7 @@ for my $train_number ( keys %map ) {
 	my %type_by_wagon_number;
 	for my $wagon ( @{ $wagon_map{$train_number} // [] } ) {
 		my ( $wagon_type, $wagon_number ) = @{$wagon};
-		if ( $wagon_type =~ m{40[1-9]} ) {
+		if ( $wagon_type =~ m{ 40[1-9] | 146 }x ) {
 			next;
 		}
 		if ( not $wagon_number ) {
@@ -523,7 +523,7 @@ for my $train_number ( keys %map ) {
 	if ($wagon_numbers_ok) {
 		for my $wagon ( @{ $wagon_map{$train_number} // [] } ) {
 			my ( $wagon_type, $wagon_number ) = @{$wagon};
-			if ( $wagon_type =~ m{40[1-9]} ) {
+			if ( $wagon_type =~ m{ 40[1-9] | 146 }x ) {
 				next;
 			}
 
@@ -547,6 +547,9 @@ for my $train_number ( keys %map ) {
 		delete $map{$train_number}{has_wagon};
 	}
 }
+
+# broken umlauf (indentation changes on page break)
+delete $map{77689}{cycle};
 
 # use canonical output (i.e., sort hash keys) to allow for easy diffing.
 say JSON->new->utf8->canonical->encode(
