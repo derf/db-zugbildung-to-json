@@ -169,24 +169,23 @@ Otherwise, the property is not present. It is **reliable**.
 			"Erfurt (07:40/07:45)",
 			"Nürnberg"
 		],
-		"postEnd": null,
 		"preStart": "Berlin-Rummelsburg (Triebzuganlage)",
 		"start": "Berlin-Gesundbrunnen (05:53)"
 	}
 }
 ```
 
-Scheduled route. It is divided into five parts:
+Scheduled route. It contains up to five properties:
 
-* **preStart**: Station (without passenger service) where the train is prepared / provisioned. May be null.
+* **preStart**: Station (without passenger service) where the train is prepared / provisioned.
 * **start**: First station(s) with passenger service. Often contains the scheduled departure time.
 * **middle**: List of noteworthy stations along the route. May be empty.
   This is not the complete route. Individual stations may contain timestamps.
 * **end**: Terminal station(s) with passenger service. Often contains the scheduled arrival time.
-* **postEnd**: Station (without passenger service) where the train is parked. May be null.
+* **postEnd**: Station (without passenger service) where the train is parked.
 
 Station entries are taken as-is from the PDF file. They may differ from station
-names used in iris-tts or HAFAS. A null preStart / postEnd entry does not
+names used in iris-tts or HAFAS. A missing preStart / postEnd entry does not
 imply that the train is prepared / parked at the first / last station with
 passenger service. Station names may be surrounded by brackets.
 

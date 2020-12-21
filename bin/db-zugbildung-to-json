@@ -440,6 +440,14 @@ for my $train ( values %map ) {
 		end      => $end,
 		postEnd  => $post_end,
 	};
+
+	for my $k ( keys %{ $train->{route} } ) {
+		if ( not defined $train->{route}{$k} ) {
+
+			# avoid null values (leave out the property instead)
+			delete $train->{route}{$k};
+		}
+	}
 }
 
 for my $train ( values %map ) {
