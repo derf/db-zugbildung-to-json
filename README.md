@@ -83,13 +83,15 @@ as noted in the PDF file.
 	"10": {
 		"rawType": "ICE-W",
 		"type": "ICE 3",
-		"shortType": "3" /* optional */,
-		"name": "ICE International", /* optional */
+		"shortType": "3",
+		"name": "ICE International",
 		"route": { /* scheduled route */ },
-		"schedules": [ /* scheduled service days and route deviations */ ] /* optional */,
-		"cycle": { /* cycle ("Umlauf") data */ } /* optional */,
-		"hasWagon": { /* wagon type map */ } /* optional */,
-		"wagons": [ /* wagon list */ ] /* optional */,
+		"commonAttr": { /* train/powercar attributes */ },
+		"attrVariants": [ { /* train/powercar attributes */ } /* ... */ ],
+		"schedules": [ /* scheduled service days and route deviations */ ],
+		"cycle": { /* cycle ("Umlauf") data */ },
+		"hasWagon": { /* wagon type map */ },
+		"wagons": [ /* wagon list */ ],
 	}
 }
 ```
@@ -98,6 +100,9 @@ Each train is identified by its number. It is unique in context of DB
 long-distance trains, but may be used by other european operators as well. For
 instance, the IC services Amsterdam – Berlin and Koebenhavns – Aarhus often use
 identical three-letter numbers.
+
+rawType, type, and route are always present. The remaining properties are
+optional.
 
 #### rawType
 
@@ -189,6 +194,21 @@ Station entries are taken as-is from the PDF file. They may differ from station
 names used in iris-tts or HAFAS. A missing preStart / postEnd entry does not
 imply that the train is prepared / parked at the first / last station with
 passenger service. Station names may be surrounded by brackets.
+
+#### train/powercar attributes
+
+```js
+{
+	"brakingPercentage": 177,
+	"length": 402,
+	"series": "406",
+	"station": "FF",
+	"vmax": 300
+}
+```
+
+Taken as-is from the PDF file. commonAttr contains only properties which are
+identical in each variant. *station* is a DS100 identifier with unknown meaning.
 
 #### schedules
 

@@ -66,6 +66,12 @@ components:
           description: true if this is an empty train without passenger service ("Leerfahrt")
         route:
           $ref: '#/components/schemas/route'
+        commonAttr:
+          $ref: '#/components/schemas/trainAttr'
+        attrVariants:
+          type: array
+          items:
+            $ref: '#/components/schemas/trainAttr'
         cycle:
           $ref: '#/components/schemas/cycle'
         hasWagon:
@@ -94,6 +100,32 @@ components:
         postEnd:
           type: string
           description: station where the train is parked
+    trainAttr:
+      type: object
+      properties:
+        brakingPercentage:
+          type: integer
+          example: 177
+          description: Bremshundertstel
+        length:
+          type: integer
+          example: 402
+          description: train length (including powercar)
+        series:
+          type: string
+          example: "406"
+          description: powercar series
+        series2:
+          type: string
+          description: series of second powercar (if present)
+        station:
+          type: string
+          example: "FF"
+          description: DS100 station code, details unknown
+        vmax:
+          type: integer
+          example: 300
+          description: rated maximum speed in km/h
     cycle:
       type: object
       properties:

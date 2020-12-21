@@ -549,6 +549,53 @@ for my $train ( values %map ) {
 	}
 }
 
+for my $train ( values %map ) {
+
+	if ( not $train->{details} ) {
+		next;
+	}
+
+	my @details = @{ $train->{details} // [] };
+	my %common_setup;
+	my @setups;
+
+	for my $line (@details) {
+		my %setup;
+		if ( $line =~ m{ Tfz1:(\d+) }x ) {
+			$setup{series} = $1;
+		}
+		if ( $line =~ m{ Tfz2:(\d+) }x ) {
+			$setup{series2} = $1;
+		}
+		if ( $line =~ m{ Hg(\d+) }x ) {
+			$setup{vmax} = 0 + $1;
+		}
+		if ( $line =~ m{ BrH(\d+) }x ) {
+			$setup{brakingPercentage} = 0 + $1;
+		}
+		if ( $line =~ m{ (\d+)m }x ) {
+			$setup{length} = 0 + $1;
+		}
+		if ( %setup and $line =~ m{ ^ \s* ([+]? [A-Z ]{1,7}) }x ) {
+			$setup{station} = $1;
+			$setup{station} =~ s{\s+$}{};
+		}
+		push( @setups, {%setup} );
+	}
+
+	for my $key (qw(brakingPercentage length series series2 vmax)) {
+		if ( ( my @uniq = uniq grep { $_ } map { $_->{$key} } @setups ) == 1 ) {
+			$common_setup{$key} = $key eq 'series' ? $uniq[0] : 0 + $uniq[0];
+		}
+	}
+
+	delete $train->{details};
+	if (%common_setup) {
+		$train->{commonAttr} = {%common_setup};
+	}
+	$train->{attrVariants} = [@setups];
+}
+
 for my $train_number ( keys %map ) {
 	my $wagon_numbers_ok = 1;
 	my $wagon_types_ok   = 1;
