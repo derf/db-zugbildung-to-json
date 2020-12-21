@@ -72,7 +72,7 @@ to check whether content is up-to-date.
 }
 ```
 
-An ISO 8601 date range describing the valid range of the train composition data
+An ISO 8601 interval describing the valid range of the train composition data
 as noted in the PDF file.
 
 ### Train details
@@ -110,7 +110,7 @@ information is **mostly reliable**. If a train type is unknown, either due to
 an unhandled composition or due to different train types for different time
 ranges (which are not supported by this schema yet), `rawType` is used.
 
-Possible values:
+Values:
 
 * ICE 1/2/4
 * ICE 1
@@ -132,7 +132,7 @@ A short identifier which can be used to differentiate between ICE 3 and ICE 3
 Redesign or between IC1 and IC2. If the type cannot be estimated, this
 property is not present. Just like `type`, it is **mostly reliable**.
 
-Possible values:
+Values:
 
 * **1** (ICE 1)
 * **2** (ICE 2 / IC2 / IC2 KISS)
