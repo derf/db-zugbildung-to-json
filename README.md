@@ -202,13 +202,14 @@ passenger service. Station names may be surrounded by brackets.
 	"brakingPercentage": 177,
 	"length": 402,
 	"series": "406",
-	"station": "FF",
+	"station": "Basel SBB",
 	"vmax": 300
 }
 ```
 
 Taken as-is from the PDF file. commonAttr contains only properties which are
-identical in each variant. *station* is a DS100 identifier with unknown meaning.
+identical in each variant. *station* is translated from DS100 to a station
+name; its meaning is unknown.
 
 #### schedules
 

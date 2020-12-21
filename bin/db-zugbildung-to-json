@@ -13,6 +13,7 @@ use File::Slurp qw(write_file);
 use IPC::Run3;
 use JSON;
 use List::Util qw(uniq);
+use Travel::Status::DE::IRIS::Stations;
 
 sub show_usage {
 	my ($exit_code) = @_;
@@ -31,6 +32,12 @@ my %month    = map { ( $months[$_] => $_ ) } ( 0 .. $#months );
 
 my ( $valid, $valid_from, $valid_through );
 my $year;
+
+my %ds100_to_name;
+
+for my $station ( Travel::Status::DE::IRIS::Stations::get_stations() ) {
+	$ds100_to_name{ $station->[0] } = $station->[1];
+}
 
 sub parse_weekday_range {
 	my ($range) = @_;
@@ -577,8 +584,16 @@ for my $train ( values %map ) {
 			$setup{length} = 0 + $1;
 		}
 		if ( %setup and $line =~ m{ ^ \s* ([+]? [A-Z ]{1,7}) }x ) {
-			$setup{station} = $1;
-			$setup{station} =~ s{\s+$}{};
+			my $station = $1;
+			$station =~ s{\s+$}{};
+			my $special = ( $station =~ s{^[+]}{} );
+			if ( $ds100_to_name{$station} ) {
+				$station = $ds100_to_name{$station};
+			}
+			if ($special) {
+				$station = "+${station}";
+			}
+			$setup{station} = $station;
 		}
 		push( @setups, {%setup} );
 	}

@@ -120,8 +120,8 @@ components:
           description: series of second powercar (if present)
         station:
           type: string
-          example: "FF"
-          description: DS100 station code, details unknown
+          example: "Basel SBB"
+          description: station name, details unknown
         vmax:
           type: integer
           example: 300
