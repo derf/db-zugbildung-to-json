@@ -552,6 +552,7 @@ for my $train ( values %map ) {
 for my $train_number ( keys %map ) {
 	my $wagon_numbers_ok = 1;
 	my $wagon_types_ok   = 1;
+	my $wagon_list_ok    = 1;
 	my %bincount;
 	my %type_by_wagon_number;
 	for my $wagon ( @{ $wagon_map{$train_number} // [] } ) {
@@ -580,13 +581,12 @@ for my $train_number ( keys %map ) {
 			}
 
 			if ( $bincount{$wagon_number} > 1 ) {
+				$wagon_list_ok = 0;
 				if ( $type_by_wagon_number{$wagon_number}[0] ne
 					$type_by_wagon_number{$wagon_number}[1] )
 				{
 					$wagon_types_ok = 0;
 				}
-
-				# TODO else -> wagon_list_ok = 0 ?
 			}
 		}
 	}
@@ -598,6 +598,12 @@ for my $train_number ( keys %map ) {
 		delete $map{$train_number}{shortType};
 		delete $map{$train_number}{wagons};
 		delete $map{$train_number}{hasWagon};
+	}
+	elsif ( not $wagon_list_ok ) {
+
+		# train type appears to be correct, but the list contains duplicates
+		# (e.g. due to unhandled schedule variants)
+		delete $map{$train_number}{wagons};
 	}
 }
 
