@@ -8,6 +8,7 @@ use warnings;
 use 5.020;
 use utf8;
 
+use Encode qw(decode);
 use File::Slurp qw(write_file);
 use IPC::Run3;
 use JSON;
@@ -167,7 +168,8 @@ if ($?) {
 	exit 2;
 }
 
-my $wr_pdf = $ARGV[0];
+my $wr_pdf  = decode( 'UTF-8', $ARGV[0] );
+my $wr_name = ( split( qr{/}, $wr_pdf ) )[-1];
 my $wr_txt;
 my $command = [ "pdftotext", "-layout", "-nopgbrk", $wr_pdf, "/dev/stdout" ];
 
@@ -569,7 +571,9 @@ delete $map{2310}{cycle};
 # use canonical output (i.e., sort hash keys) to allow for easy diffing.
 say JSON->new->utf8->canonical->encode(
 	{
-		valid => $valid,
-		train => {%map}
+		deprecated => \0,
+		source     => $wr_name,
+		train      => {%map},
+		valid      => $valid,
 	}
 );
