@@ -478,9 +478,9 @@ for my $train ( values %map ) {
 			}
 		}
 	}
-	if ( exists $train->{cycle}{from} ) {
-		@{ $train->{cycle}{from} } = uniq @{ $train->{cycle}{from} };
-		@{ $train->{cycle}{to} }   = uniq @{ $train->{cycle}{to} };
+	if ( exists $train->{cycle} ) {
+		@{ $train->{cycle}{from} } = uniq @{ $train->{cycle}{from} // [] };
+		@{ $train->{cycle}{to} }   = uniq @{ $train->{cycle}{to}   // [] };
 	}
 }
 
