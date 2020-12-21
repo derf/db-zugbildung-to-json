@@ -54,7 +54,7 @@ components:
           description: scheduled train type as estimated from rawType and wagon data
         shortType:
           type: string
-          example: 3
+          example: "3"
           description: A short identifier useful to differentiate between train types such as ICE 3 / ICE 3 Redesign or IC1 / IC2
         name:
           type: string
@@ -125,6 +125,6 @@ components:
             example: DBpbzfa
             description: wagon or locomotive type
           number:
-            type: string
+            type: integer
             example: 1
-            decription: wagon number
+            description: wagon number
