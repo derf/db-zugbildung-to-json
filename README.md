@@ -141,6 +141,7 @@ Values:
 * **3V** (ICE 3 Velaro)
 * **4** (ICE 4)
 * **M** (Metropolitan)
+* **T** (ICE T)
 
 #### name
 
