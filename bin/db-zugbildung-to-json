@@ -574,7 +574,12 @@ for my $train_number ( keys %map ) {
 		for my $wagon ( @{ $wagon_map{$train_number} // [] } ) {
 			my ( $wagon_type, $wagon_number ) = @{$wagon};
 
-			push( @{ $map{$train_number}{wagons} }, $wagon );
+			my $json_wagon = { type => $wagon_type };
+			if ($wagon_number) {
+				$json_wagon->{number} = 0 + $wagon_number;
+			}
+
+			push( @{ $map{$train_number}{wagons} }, $json_wagon );
 
 			if ( $wagon_type =~ m{ 40[1-9] | 14[67] }x ) {
 				next;

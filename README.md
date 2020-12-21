@@ -27,7 +27,8 @@ Graphical cycle maps are available on
 
 This README documents **version 0** of the format. It is not stable yet; data
 layout or semantic changes may not be reflected in the version number.
-Starting with v1, schema and semantics will be stable.
+Starting with v1, schema and semantics will be stable. See also the
+[OpenAPI spec](https://lib.finalrewind.org/dbdb/db_zugbildung_v0.yml).
 
 ```js
 {
@@ -248,30 +249,29 @@ expressions and may miss rarely used wagon types.
 ```js
 {
 	"wagons": [
-		[
-		"DBpbzfa",
-		"1"
-		],
-		[
-		"DBpza",
-		"2"
-		],
-		[
-		"DBpza",
-		"3"
-		],
-		[
-		"DBpza",
-		"4"
-		],
-		[
-		"DApza",
-		"5"
-		],
-		[
-		"147.5",
-		null
-		]
+		{
+			"type": "DBpbzfa",
+			"number": 1
+		},
+		{
+			"type": "DBpza",
+			"number": 2
+		},
+		{
+			"type": "DBpza",
+			"number": 3
+		},
+		{
+			"type": "DBpza",
+			"number": 4
+		},
+		{
+			"type": "DApza",
+			"number": 5
+		},
+		{
+			type: "147.5",
+		}
 	]
 }
 ```
