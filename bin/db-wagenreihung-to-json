@@ -362,9 +362,9 @@ for my $line (@lines) {
 		$map{$number}{route} .= $+{route};
 	}
 	elsif ( $state eq "route" and $line eq "" ) {
-		$state = "conditions";
+		$state = "schedules";
 	}
-	elsif ( $state eq "conditions" and $line =~ m{ Hg | Tfz | BrH }x ) {
+	elsif ( $state eq "schedules" and $line =~ m{ Hg | Tfz | BrH }x ) {
 		$state = "details";
 	}
 
@@ -387,8 +387,8 @@ for my $line (@lines) {
 		$map{$number}{has_wagon}{$wagon_type} = \1;
 	}
 
-	if ( $state eq "conditions" and length($line) and $line =~ m{ \S }x ) {
-		push( @{ $map{$number}{conditions} }, parse_condition($line) );
+	if ( $state eq "schedules" and length($line) and $line =~ m{ \S }x ) {
+		push( @{ $map{$number}{schedules} }, parse_condition($line) );
 	}
 
 	if (    $state eq "details"
