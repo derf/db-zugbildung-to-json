@@ -549,7 +549,7 @@ for my $train_number ( keys %map ) {
 
 		# train type may differ depending on date of week or similar. We don't
 		# parse/handle that yet.
-		delete $map{$train_number}{type};
+		$map{$train_number}{type} = $map{$train_number}{raw};
 		delete $map{$train_number}{short};
 		delete $map{$train_number}{wagons};
 		delete $map{$train_number}{has_wagon};
