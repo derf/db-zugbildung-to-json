@@ -549,26 +549,6 @@ for my $train ( values %map ) {
 	}
 }
 
-#for my $train_number ( keys %map ) {
-#	my $tr = $map{$train_number}{route} // q{};
-#	$tr =~ s{ - .* - }{ - };
-#	my $this = sprintf("\"%d %s\"", $train_number, $tr);
-#	for my $from ( @{ $map{$train_number}{umlauf}{from} // [] } ) {
-#		$tr = $map{$from}{route} // q{};
-#		$tr =~ s{ - .* - }{ - };
-#		$from = sprintf("\"%d %s\"", $from, $tr);
-#		say "$from -> $this;";
-#	}
-#	for my $to ( @{ $map{$train_number}{umlauf}{to} // [] } ) {
-#		$tr = $map{$to}{route} // q{};
-#		$tr =~ s{ -.*- }{ - };
-#		$to = sprintf("\"%d %s\"", $to, $tr);
-#		say "$this -> $to;";
-#	}
-#}
-
-#exit 0;
-
 for my $train_number ( keys %map ) {
 	my $wagon_numbers_ok = 1;
 	my $wagon_types_ok   = 1;
@@ -623,9 +603,9 @@ for my $train_number ( keys %map ) {
 
 # Cleanup
 
-#for my $train (values %map) {
-#	delete $train->{wagonorder_notes};
-#}
+for my $train ( values %map ) {
+	delete $train->{wagonorder_notes};
+}
 
 # broken umlauf (indentation changes on page break)
 delete $map{104}{cycle};
