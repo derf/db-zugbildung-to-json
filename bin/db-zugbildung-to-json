@@ -90,12 +90,12 @@ sub parse_dates {
 		}
 
 		if (    $mode eq 'range'
-			and $date =~ m{ ^ ab \s* (?<day> \d{2} ) \. (?<month> [^.]* ) }x )
+			and $date =~ m{ ^ ab \s* (?<day> \d{2} ) \. (?<month> [IVX]* ) }x )
 		{
 			push( @valid_ranges, [ [ $+{month}, $+{day} ], undef ] );
 		}
 		elsif ( $mode eq 'range'
-			and $date =~ m{ ^ bis \s* (?<day> \d{2} ) \. (?<month> [^.]* ) }x )
+			and $date =~ m{ ^ bis \s* (?<day> \d{2} ) \. (?<month> [IVX]* ) }x )
 		{
 			push( @valid_ranges, [ undef, [ $+{month}, $+{day} ] ] );
 		}
@@ -104,6 +104,16 @@ sub parse_dates {
 		  )
 		{
 			push( @valid_ranges, [ [ $+{fm}, $+{fd} ], [ $+{tm}, $+{td} ] ] );
+		}
+		elsif ( $mode eq 'extra'
+			and $date =~ m{ (?<day> \d{2} ) \. (?<month> [IVX]* ) }x )
+		{
+			push( @valid_dates, [ $+{month}, $+{day} ] );
+		}
+		elsif ( $mode eq 'except'
+			and $date =~ m{ (?<day> \d{2} ) \. (?<month> [IVX]* ) }x )
+		{
+			push( @invalid_dates, [ $+{month}, $+{day} ] );
 		}
 	}
 
@@ -126,6 +136,46 @@ sub parse_dates {
 				$range->[1][1] );
 		}
 		push( @{ $ret{valid} }, "${from_date}/${through_date}" );
+	}
+
+	# for several dates of the same month, only the last date has the month set
+	# (e.g. "24., 31.XII."). Walk through the list in reverse so ensure the
+	# month is always available.
+	my $month = undef;
+	for my $date ( reverse @valid_dates ) {
+		if ( not $date->[0] and not $month ) {
+			say STDERR "Skipping unhandled valid date in \"$text\"";
+			next;
+		}
+
+		# TODO Winterfahrplan: Use $year-1 for month XII
+		push(
+			@{ $ret{valid} },
+			sprintf( '%04d-%02d-%02d',
+				$year, $month{ $date->[0] || $month },
+				$date->[1] )
+		);
+		if ( $date->[0] ) {
+			$month = $date->[0];
+		}
+	}
+	$month = undef;
+	for my $date ( reverse @invalid_dates ) {
+		if ( not $date->[0] and not $month ) {
+			say STDERR "Skipping unhandled invalid date in \"$text\"";
+			next;
+		}
+
+		# TODO Winterfahrplan: Use $year-1 for month XII
+		push(
+			@{ $ret{invalid} },
+			sprintf( '%04d-%02d-%02d',
+				$year, $month{ $date->[0] || $month },
+				$date->[1] )
+		);
+		if ( $date->[0] ) {
+			$month = $date->[0];
+		}
 	}
 
 	return %ret;
@@ -570,6 +620,12 @@ for my $train_number ( keys %map ) {
 		delete $map{$train_number}{hasWagon};
 	}
 }
+
+# Cleanup
+
+#for my $train (values %map) {
+#	delete $train->{wagonorder_notes};
+#}
 
 # broken umlauf (indentation changes on page break)
 delete $map{104}{cycle};
