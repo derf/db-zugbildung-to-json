@@ -236,34 +236,34 @@ for my $line (@lines) {
 
 		#say "$type $number";
 		$map{$number} = {
-			raw => $type,
+			rawType => $type,
 		};
 
 		if ( $type eq 'ICE-A' ) {
 			$map{$number}{type} = 'ICE 1/2/4';
 		}
 		elsif ( $type eq 'ICE-W' ) {
-			$map{$number}{type}  = 'ICE 3';
-			$map{$number}{short} = '3';
+			$map{$number}{type}      = 'ICE 3';
+			$map{$number}{shortType} = '3';
 		}
 		elsif ( $type eq 'ICE' ) {
 			$map{$number}{type} = 'ICE 1/2/4';
 		}
 		elsif ( $type eq 'ICE-T' ) {
-			$map{$number}{type}  = 'ICE T';
-			$map{$number}{short} = 'T';
+			$map{$number}{type}      = 'ICE T';
+			$map{$number}{shortType} = 'T';
 		}
 		elsif ( $type eq 'IC-A' ) {
-			$map{$number}{type}  = 'Metropolitan';
-			$map{$number}{short} = 'M';
+			$map{$number}{type}      = 'Metropolitan';
+			$map{$number}{shortType} = 'M';
 		}
 		elsif ( $type eq 'IC-D' ) {
-			$map{$number}{type}  = 'IC2';
-			$map{$number}{short} = '2';
+			$map{$number}{type}      = 'IC2';
+			$map{$number}{shortType} = '2';
 		}
 		elsif ( $type eq 'IC-E' ) {
-			$map{$number}{type}  = 'IC2 KISS';
-			$map{$number}{short} = '2';
+			$map{$number}{type}      = 'IC2 KISS';
+			$map{$number}{shortType} = '2';
 		}
 		else {
 			$map{$number}{type} = $type;
@@ -295,9 +295,9 @@ for my $line (@lines) {
 		$state = "train_no";
 
 		$map{$number} = {
-			raw   => $type,
-			type  => $type,
-			empty => \1,
+			rawType => $type,
+			type    => $type,
+			empty   => \1,
 		};
 	}
 
@@ -311,36 +311,36 @@ for my $line (@lines) {
 	# in the same wagon ("ARmz").
 	elsif ( $number and $line =~ m{^\d*\s+ARmz} ) {
 		if ( $map{$number}{type} eq 'ICE 1/2/4' ) {
-			$map{$number}{type}  = 'ICE 4';
-			$map{$number}{short} = '4';
+			$map{$number}{type}      = 'ICE 4';
+			$map{$number}{shortType} = '4';
 		}
 	}
 	elsif ( $number and $line =~ m{^\d*\s+WRmz} ) {
 
 		#say "ICE 1 / ICE 3 Redesign (WRmz)";
 		if ( $map{$number}{type} eq 'ICE 1/2/4' ) {
-			$map{$number}{type}  = 'ICE 1';
-			$map{$number}{short} = '1';
+			$map{$number}{type}      = 'ICE 1';
+			$map{$number}{shortType} = '1';
 		}
 		elsif ( $map{$number}{type} eq 'ICE 3' ) {
-			$map{$number}{type}  = 'ICE 3 Redesign';
-			$map{$number}{short} = '3R';
+			$map{$number}{type}      = 'ICE 3 Redesign';
+			$map{$number}{shortType} = '3R';
 		}
 	}
 	elsif ( $number and $line =~ m{^\d*\s+WRmbsz} ) {
 
 		#say "ICE 2 (WRmbsz)";
 		if ( $map{$number}{type} eq 'ICE 1/2/4' ) {
-			$map{$number}{type}  = 'ICE 2';
-			$map{$number}{short} = '2';
+			$map{$number}{type}      = 'ICE 2';
+			$map{$number}{shortType} = '2';
 		}
 	}
 	elsif ( $number and $line =~ m{^\d*\s+Bpmbsz} ) {
 
 		#say "ICE 3 Velaro";
 		if ( $map{$number}{type} eq 'ICE 3' ) {
-			$map{$number}{type}  = 'ICE 3 Velaro';
-			$map{$number}{short} = '3V';
+			$map{$number}{type}      = 'ICE 3 Velaro';
+			$map{$number}{shortType} = '3V';
 		}
 	}
 	elsif ( $number and $line =~ m{^\d*\s+[AB][pv]m} ) {
@@ -352,7 +352,7 @@ for my $line (@lines) {
         # train. Observed on IC 2006 Stuttgart – Dortmund, which is planned as
         # IC-D, but actually uses IC1 wagons.
 			$map{$number}{type} = 'IC';
-			delete $map{$number}{short};
+			delete $map{$number}{shortType};
 		}
 	}
 
@@ -385,7 +385,7 @@ for my $line (@lines) {
 			push( @{ $map{$number}{wagonorder_notes} }, $line );
 		}
 
-		$map{$number}{has_wagon}{$wagon_type} = \1;
+		$map{$number}{hasWagon}{$wagon_type} = \1;
 	}
 
 	if ( $state eq "schedules" and length($line) and $line =~ m{ \S }x ) {
@@ -550,10 +550,10 @@ for my $train_number ( keys %map ) {
 
 		# train type may differ depending on date of week or similar. We don't
 		# parse/handle that yet.
-		$map{$train_number}{type} = $map{$train_number}{raw};
-		delete $map{$train_number}{short};
+		$map{$train_number}{type} = $map{$train_number}{rawType};
+		delete $map{$train_number}{shortType};
 		delete $map{$train_number}{wagons};
-		delete $map{$train_number}{has_wagon};
+		delete $map{$train_number}{hasWagon};
 	}
 }
 
