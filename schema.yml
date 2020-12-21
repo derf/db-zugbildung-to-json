@@ -121,7 +121,7 @@ components:
         station:
           type: string
           example: "Basel SBB"
-          description: station name, details unknown
+          description: station name, may be prefixed with a plus sign
         vmax:
           type: integer
           example: 300

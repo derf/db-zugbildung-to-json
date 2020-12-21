@@ -208,8 +208,11 @@ passenger service. Station names may be surrounded by brackets.
 ```
 
 Taken as-is from the PDF file. commonAttr contains only properties which are
-identical in each variant. *station* is translated from DS100 to a station
-name; its meaning is unknown.
+identical in each variant. *station* is translated from DS100 to a station name
+and likely the first station on the train's route where the corresponding
+attributes are valid. Presumably, they valid until the station mentioned in the
+next entry is reached (or the train reaches its terminus). *station* may be
+prefixed with a plus sign.
 
 #### schedules
 
