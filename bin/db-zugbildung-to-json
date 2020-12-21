@@ -28,7 +28,7 @@ my @months   = (qw(0 I II III IV V VI VII VIII IX X XI XII));
 my %weekday  = map { ( $weekdays[$_] => $_ ) } ( 0 .. $#weekdays );
 my %month    = map { ( $months[$_] => $_ ) } ( 0 .. $#months );
 
-my %valid;
+my ( $valid, $valid_from, $valid_through );
 my $year;
 
 sub parse_weekday_range {
@@ -112,8 +112,8 @@ sub parse_dates {
 	);
 
 	for my $range (@valid_ranges) {
-		my $from_date    = $valid{from};
-		my $through_date = $valid{through};
+		my $from_date    = $valid_from;
+		my $through_date = $valid_through;
 		if ( $range->[0] ) {
 			$from_date = sprintf( '%04d-%02d-%02d',
 				$year, $month{ $range->[0][0] },
@@ -198,11 +198,10 @@ for my $line (@lines) {
 		=~ m{ ^ \s* Gültigkeit: \s* (?<fd> \d{2} ) \. (?<fm> \d{2} ) \. (?<fy> \d{4} ) \s* – \s* (?<td> \d{2} ) \. (?<tm> \d{2} ) \. (?<ty> \d{4} ) }x
 	  )
 	{
-		%valid = (
-			"from"    => sprintf( "%04d-%02d-%02d", $+{fy}, $+{fm}, $+{fd} ),
-			"through" => sprintf( "%04d-%02d-%02d", $+{ty}, $+{tm}, $+{td} ),
-		);
-		$year = $+{ty};
+		$valid_from    = sprintf( "%04d-%02d-%02d", $+{fy}, $+{fm}, $+{fd} );
+		$valid_through = sprintf( "%04d-%02d-%02d", $+{ty}, $+{tm}, $+{td} );
+		$valid         = "${valid_from}/${valid_through}";
+		$year          = $+{ty};
 	}
 
 	if ( $state eq "intro" ) {
@@ -570,7 +569,7 @@ delete $map{2310}{cycle};
 # use canonical output (i.e., sort hash keys) to allow for easy diffing.
 say JSON->new->utf8->canonical->encode(
 	{
-		valid => {%valid},
+		valid => $valid,
 		train => {%map}
 	}
 );
