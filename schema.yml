@@ -110,6 +110,11 @@ components:
       additionalProperties:
         type: boolean
         description: true iff the wagon or locomotive type described by the key is scheduled for the train
+      example:
+        "174.5": true
+        DApza: true
+        DBpbzfa: true
+        PBpza: true
     wagons:
       type: array
       items:
@@ -117,5 +122,9 @@ components:
         properties:
           type:
             type: string
+            example: DBpbzfa
+            description: wagon or locomotive type
           number:
             type: string
+            example: 1
+            decription: wagon number
