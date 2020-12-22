@@ -23,6 +23,8 @@ The latest JSON produced by db-zugbildung-to-json is available online at
 Graphical cycle maps are available on
 [dbdb/db\_umlauf](https://lib.finalrewind.org/dbdb/db_umlauf/).
 
+Data is © 2020 DB Fernverkehr AG, licensed under CC-BY-4.0.
+
 ## Data Format
 
 This README documents **version 0** of the format. It is not stable yet; data
