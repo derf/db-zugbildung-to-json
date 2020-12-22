@@ -600,7 +600,7 @@ for my $train ( values %map ) {
 
 	for my $key (qw(brakingPercentage length series series2 vmax)) {
 		if ( ( my @uniq = uniq grep { $_ } map { $_->{$key} } @setups ) == 1 ) {
-			$common_setup{$key} = $key eq 'series' ? $uniq[0] : 0 + $uniq[0];
+			$common_setup{$key} = $key =~ m{series} ? $uniq[0] : 0 + $uniq[0];
 		}
 	}
 
