@@ -55,7 +55,7 @@ components:
         shortType:
           type: string
           example: "3"
-          description: A short identifier useful to differentiate between train types such as ICE 3 / ICE 3 Redesign or IC1 / IC2
+          description: A short identifier useful to differentiate between train types such as ICE 3 / ICE 3 Redesign or IC1 / IC2 KISS
         name:
           type: string
           example: ICE International

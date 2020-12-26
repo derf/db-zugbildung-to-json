@@ -130,7 +130,7 @@ Values:
 * ICE T
 * Metropolitan
 * IC
-* IC2
+* IC2 Twindexx
 * IC2 KISS
 * *anything present in rawType*
 
@@ -143,7 +143,7 @@ property is not present. Just like `type`, it is **mostly reliable**.
 Values:
 
 * **1** (ICE 1)
-* **2** (ICE 2 / IC2 / IC2 KISS)
+* **2** (ICE 2 / IC2 Twindexx / IC2 KISS)
 * **3** (ICE 3)
 * **3R** (ICE 3 Redesign)
 * **3V** (ICE 3 Velaro)

@@ -321,7 +321,7 @@ for my $line (@lines) {
 			$map{$number}{shortType} = 'M';
 		}
 		elsif ( $type eq 'IC-D' ) {
-			$map{$number}{type}      = 'IC2';
+			$map{$number}{type}      = 'IC2 Twindexx';
 			$map{$number}{shortType} = '2';
 		}
 		elsif ( $type eq 'IC-E' ) {
