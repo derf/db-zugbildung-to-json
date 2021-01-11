@@ -40,7 +40,9 @@ components:
           type: object
           description: dict mapping train numbers to train objects
           additionalProperties:
-            $ref: '#/components/schemas/train'
+            type: array
+            items:
+              $ref: '#/components/schemas/train'
     train:
       type: object
       properties:
