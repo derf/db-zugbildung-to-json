@@ -125,9 +125,11 @@ push( @cycle_ids, keys %{ $map->{$line}{cycle} // {} } );
 
 say "digraph Umlauf {";
 
+my @all_lines;
 for my $cycle_id (@cycle_ids) {
-	say join( "\n", uniq build_cycle( $line, $cycle_id ) );
+	push( @all_lines, build_cycle( $line, $cycle_id ) );
 }
+say join( "\n", uniq @all_lines );
 
 printf( "%s [style=bold];\n", format_train( $line, $map->{$line} ) );
 
