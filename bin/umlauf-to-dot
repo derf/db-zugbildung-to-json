@@ -52,9 +52,10 @@ my $json         = JSON->new->utf8->decode($file_content);
 
 my $map = $json->{train};
 
-my @train_numbers;
-if ($line) {
+sub build_cycle {
+	my ( $line, $cycle_id ) = @_;
 	my @queue = ( [ $line, 0 ] );
+	my @train_numbers;
 
 	while (@queue) {
 		my ( $train_number, $distance ) = @{ pop @queue };
@@ -65,8 +66,11 @@ if ($line) {
 		}
 
 		my @candidates;
-		push( @candidates, @{ $map->{$train_number}{cycle}{from} // [] } );
-		push( @candidates, @{ $map->{$train_number}{cycle}{to}   // [] } );
+
+		if ( my $c = $map->{$train_number}{cycle}{$cycle_id} ) {
+			push( @candidates, @{ $c->{from} // [] } );
+			push( @candidates, @{ $c->{to}   // [] } );
+		}
 
 		@candidates = uniq @candidates;
 		@candidates
@@ -79,32 +83,48 @@ if ($line) {
 
 		push( @queue, map { [ $_, $distance + 1 ] } @candidates );
 	}
-}
-else {
-	@train_numbers = keys %{$map};
+
+	my @output;
+
+	for my $train_number (@train_numbers) {
+		if ( my $c = $map->{$train_number}{cycle}{$cycle_id} ) {
+			for my $from ( @{ $c->{from} // [] } ) {
+				push(
+					@output,
+					sprintf( "%s -> %s;",
+						format_train( $from,         $map->{$from} ),
+						format_train( $train_number, $map->{$train_number} ) )
+				);
+			}
+			for my $to ( @{ $c->{to} // [] } ) {
+				push(
+					@output,
+					sprintf( "%s -> %s;",
+						format_train( $train_number, $map->{$train_number} ),
+						format_train( $to,           $map->{$to} ) )
+				);
+			}
+		}
+		if ( $train_number != $line ) {
+			push(
+				@output,
+				sprintf( "%s [shape=box];",
+					format_train( $train_number, $map->{$train_number} ) )
+			);
+		}
+	}
+
+	return @output;
 }
 
-my @output;
-
-for my $train_number (@train_numbers) {
-	for my $from ( @{ $map->{$train_number}{cycle}{from} } ) {
-		push(
-			@output,
-			sprintf( "%s -> %s;",
-				format_train( $from,         $map->{$from} ),
-				format_train( $train_number, $map->{$train_number} ) )
-		);
-	}
-	for my $to ( @{ $map->{$train_number}{cycle}{to} } ) {
-		push(
-			@output,
-			sprintf( "%s -> %s;",
-				format_train( $train_number, $map->{$train_number} ),
-				format_train( $to,           $map->{$to} ) )
-		);
-	}
-}
+my @cycle_ids = keys %{ $map->{$line}{cycle} // {} };
 
 say "digraph Umlauf {";
-say join( "\n", uniq @output );
+
+for my $cycle_id (@cycle_ids) {
+	say join( "\n", uniq build_cycle( $line, $cycle_id ) );
+}
+
+printf( "%s [style=bold];\n", format_train( $line, $map->{$line} ) );
+
 say "}"

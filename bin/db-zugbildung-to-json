@@ -527,32 +527,36 @@ for my $train ( values %map ) {
 	if ( not $from_offset ) {
 		next;
 	}
+	my $cycle_id = "unknown";
 	for my $i_line ( @{ $train->{wagonorder_notes} } ) {
 
        # $i_line is an lvalue, so changes in $i_line end up in wagonorder_notes.
        # We don't want that.
 		my $line = substr( $i_line, 0 );
 
-		# Some cycles do not have a "from" entry, but they do have an odd
-		# F-identifier, which confuses the cycle detection code. remove it.
-		$line =~ s{F[0-9] [0-9]{3}}{.. ...};
+		# Fx abc appears to identify cycle groups.
+		# It also confuses the cycle detection code for cycles which do not have
+		# a "from" entry.
+		if ( $line =~ s{(F[0-9] [0-9]{3})}{.. ...} ) {
+			$cycle_id = $1;
+		}
 		if ( length($line) <= $from_offset ) {
 			next;
 		}
 		my $umlauf = substr( $line, $from_offset );
 		if ( $umlauf =~ m{ ^ (\d+) }x ) {
-			push( @{ $train->{cycle}{from} }, $1 );
+			push( @{ $train->{cycle}{$cycle_id}{from} }, $1 );
 		}
 		if ( length($line) > $to_offset ) {
 			$umlauf = substr( $line, $to_offset );
 			if ( $umlauf =~ m{ ^ (\d+) }x ) {
-				push( @{ $train->{cycle}{to} }, $1 );
+				push( @{ $train->{cycle}{$cycle_id}{to} }, $1 );
 			}
 		}
 	}
-	if ( exists $train->{cycle} ) {
-		@{ $train->{cycle}{from} } = uniq @{ $train->{cycle}{from} // [] };
-		@{ $train->{cycle}{to} }   = uniq @{ $train->{cycle}{to}   // [] };
+	for my $cycle ( values %{ $train->{cycle} // {} } ) {
+		@{ $cycle->{from} } = uniq @{ $cycle->{from} // [] };
+		@{ $cycle->{to} }   = uniq @{ $cycle->{to}   // [] };
 	}
 }
 

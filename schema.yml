@@ -128,15 +128,17 @@ components:
           description: rated maximum speed in km/h
     cycle:
       type: object
-      properties:
-        from:
-          type: array
-          items:
-            type: string
-        to:
-          type: array
-          items:
-            type: string
+      additionalProperties:
+        type: object
+        properties:
+          from:
+            type: array
+            items:
+              type: string
+          to:
+            type: array
+            items:
+              type: string
     hasWagon:
       type: object
       additionalProperties:
