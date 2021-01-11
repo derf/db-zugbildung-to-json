@@ -8,6 +8,8 @@ use warnings;
 use 5.020;
 use utf8;
 
+use DateTime;
+use DateTime::Format::Strptime;
 use Encode qw(decode);
 use File::Slurp qw(write_file);
 use IPC::Run3;
@@ -23,6 +25,32 @@ sub show_usage {
 "You can obtain the latest PDF from <https://data.deutschebahn.com/dataset/zugbildungsplanzugbildungsplan-zpar>";
 
 	exit $exit_code;
+}
+
+my $strp = DateTime::Format::Strptime->new(
+	pattern   => '%F',
+	time_zone => 'Europe/Berlin'
+);
+my $now = DateTime->now( time_zone => 'Europe/Berlin' );
+
+sub range_is_today {
+	my ($range) = @_;
+
+	if ( $range =~ m{^(.*)/(.*)$} ) {
+		my $dt1 = $strp->parse_datetime($1);
+		my $dt2 = $strp->parse_datetime($2);
+		if ( $dt1 and $dt2 and $dt1->epoch < $now->epoch < $dt2->epoch ) {
+			return 1;
+		}
+	}
+	else {
+		if ( my $dt = $strp->parse_datetime($range) ) {
+			if ( $dt->ymd eq $now->ymd ) {
+				return 1;
+			}
+		}
+	}
+	return;
 }
 
 my @weekdays = (qw(Mo Di Mi Do Fr Sa So));
@@ -193,7 +221,7 @@ sub parse_condition {
 	my %ret;
 
 	if ( $line
-		=~ m{ ^ \s* (?<from> .*? ) \s - \s (?<to> [^,]+ ) , \s* (?<weekdays> (Mo|Di|Mi|Do|Fr|Sa|So|tgl[.]|[+]|-)+) \s* (?<dates> .* ) $ }x
+		=~ m{ ^ \s* (?<from> .*? ) \s - \s (?<to> [^,]+ ) , \s* (?<unknown> N \s* )? (?<weekdays> (Mo|Di|Mi|Do|Fr|Sa|So|tgl[.]|[+]|-)+) \s* (?<dates> .* ) $ }x
 	  )
 	{
 		$ret{from}     = $+{from};
@@ -726,12 +754,48 @@ for my $bork (qw(104 1588 1700 77689 78112 939 2310)) {
 	}
 }
 
+my %smap;
+for my $train_no ( keys %map ) {
+	if ( @{ $map{$train_no} } == 1 ) {
+		$smap{$train_no} = $map{$train_no}[0];
+	}
+	else {
+		my $latest_valid;
+		my $valid_count = 0;
+		for my $train ( @{ $map{$train_no} } ) {
+			my $is_valid = 0;
+			for my $schedule ( @{ $train->{schedules} // [] } ) {
+				for my $valid ( @{ $schedule->{valid} // [] } ) {
+					if ( range_is_today($valid) ) {
+						$is_valid = 1;
+					}
+				}
+
+				# invalid may override valid for certain days
+				for my $invalid ( @{ $schedule->{invalid} // [] } ) {
+					if ( range_is_today($invalid) ) {
+						$is_valid = 0;
+					}
+				}
+			}
+			if ($is_valid) {
+				$latest_valid = $train;
+				$valid_count++;
+			}
+		}
+		if ( $valid_count == 1 ) {
+			$smap{$train_no} = $latest_valid;
+		}
+	}
+}
+
 # use canonical output (i.e., sort hash keys) to allow for easy diffing.
 say JSON->new->utf8->canonical->encode(
 	{
-		deprecated => \0,
-		source     => $wr_name,
-		train      => {%map},
-		valid      => $valid,
+		deprecated     => \0,
+		source         => $wr_name,
+		train          => {%smap},
+		train_variants => {%map},
+		valid          => $valid,
 	}
 );
