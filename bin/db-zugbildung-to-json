@@ -790,12 +790,24 @@ for my $train_no ( keys %map ) {
 }
 
 # use canonical output (i.e., sort hash keys) to allow for easy diffing.
-say JSON->new->utf8->canonical->encode(
-	{
-		deprecated     => \0,
-		source         => $wr_name,
-		train          => {%smap},
-		train_variants => {%map},
-		valid          => $valid,
-	}
-);
+if ( $ENV{WITH_VARIANTS} ) {
+	say JSON->new->utf8->canonical->encode(
+		{
+			deprecated     => \0,
+			source         => $wr_name,
+			train          => {%smap},
+			train_variants => {%map},
+			valid          => $valid,
+		}
+	);
+}
+else {
+	say JSON->new->utf8->canonical->encode(
+		{
+			deprecated => \0,
+			source     => $wr_name,
+			train      => {%smap},
+			valid      => $valid,
+		}
+	);
+}
