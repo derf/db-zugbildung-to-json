@@ -8,6 +8,8 @@ use warnings;
 use 5.020;
 use utf8;
 
+use DateTime;
+use DateTime::Format::Strptime;
 use Encode qw(decode);
 use File::Slurp qw(write_file);
 use IPC::Run3;
@@ -23,6 +25,32 @@ sub show_usage {
 "You can obtain the latest PDF from <https://data.deutschebahn.com/dataset/zugbildungsplanzugbildungsplan-zpar>";
 
 	exit $exit_code;
+}
+
+my $strp = DateTime::Format::Strptime->new(
+	pattern   => '%F',
+	time_zone => 'Europe/Berlin'
+);
+my $now = DateTime->now( time_zone => 'Europe/Berlin' );
+
+sub range_is_today {
+	my ($range) = @_;
+
+	if ( $range =~ m{^(.*)/(.*)$} ) {
+		my $dt1 = $strp->parse_datetime($1);
+		my $dt2 = $strp->parse_datetime($2);
+		if ( $dt1 and $dt2 and $dt1->epoch < $now->epoch < $dt2->epoch ) {
+			return 1;
+		}
+	}
+	else {
+		if ( my $dt = $strp->parse_datetime($range) ) {
+			if ( $dt->ymd eq $now->ymd ) {
+				return 1;
+			}
+		}
+	}
+	return;
 }
 
 my @weekdays = (qw(Mo Di Mi Do Fr Sa So));
@@ -193,7 +221,7 @@ sub parse_condition {
 	my %ret;
 
 	if ( $line
-		=~ m{ ^ \s* (?<from> .*? ) \s - \s (?<to> [^,]+ ) , \s* (?<weekdays> (Mo|Di|Mi|Do|Fr|Sa|So|tgl[.]|[+]|-)+) \s* (?<dates> .* ) $ }x
+		=~ m{ ^ \s* (?<from> .*? ) \s - \s (?<to> [^,]+ ) , \s* (?<unknown> N \s* )? (?<weekdays> (Mo|Di|Mi|Do|Fr|Sa|So|tgl[.]|[+]|-)+) \s* (?<dates> .* ) $ }x
 	  )
 	{
 		$ret{from}     = $+{from};
@@ -247,7 +275,6 @@ my @lines = split( qr{\n}, $wr_txt );
 
 my ( $type, $number );
 my %map;
-my %wagon_map;
 
 my $state = "intro";
 
@@ -294,9 +321,24 @@ for my $line (@lines) {
 		$state = "train_no";
 
 		#say "$type $number";
-		$map{$number} = {
-			rawType => $type,
-		};
+
+		if ( exists $map{$number} ) {
+
+			# train numbers are not unique (they may have several wagon
+			# orders with non-intersecting date ranges)
+			my @dup = @{ $map{$number}{dup} // [] };
+			delete $map{$number}{dup};
+			push( @dup, $map{$number} );
+			$map{$number} = {
+				rawType => $type,
+				dup     => [@dup],
+			};
+		}
+		else {
+			$map{$number} = {
+				rawType => $type,
+			};
+		}
 
 		if ($name) {
 			$map{$number}{name} = $name;
@@ -442,7 +484,7 @@ for my $line (@lines) {
 		my $wagon_number = $+{number};
 		my $rest         = $+{rest};
 
-		push( @{ $wagon_map{$number} }, [ $wagon_type, $wagon_number ] );
+		push( @{ $map{$number}{raw_wagons} }, [ $wagon_type, $wagon_number ] );
 
 		if ( $rest and $rest =~ m{\S} ) {
 			push( @{ $map{$number}{wagonorder_notes} }, $line );
@@ -463,240 +505,297 @@ for my $line (@lines) {
 	}
 }
 
-for my $train ( values %map ) {
-	if ( not $train->{route} ) {
-		next;
-	}
+for my $train_no ( keys %map ) {
+	my @entries = @{ $map{$train_no}{dup} // [] };
+	delete $map{$train_no}{dup};
+	push( @entries, $map{$train_no} );
+	$map{$train_no} = [@entries];
+}
 
-	my $route = $train->{route};
-	my @parts = split( qr{ - }, $route );
+for my $trains ( values %map ) {
+	for my $train ( @{$trains} ) {
+		if ( not $train->{route} ) {
+			next;
+		}
 
-	if ( @parts < 2 ) {
-		$train->{route} = { raw => $route };
-		next;
-	}
-	my ( $pre_start, $start, @middle, $end, $post_end );
+		my $route = $train->{route};
+		my @parts = split( qr{ - }, $route );
 
-	if ( $parts[0] =~ m{ ^ [(] }x ) {
-		$pre_start = shift @parts;
-		$pre_start =~ s{ ^ [(] (.*) [)] $ }{$1}x;
-	}
+		if ( @parts < 2 ) {
+			$train->{route} = { raw => $route };
+			next;
+		}
+		my ( $pre_start, $start, @middle, $end, $post_end );
 
-	if ( $parts[-1] =~ m{ ^ [(] }x ) {
-		$post_end = pop @parts;
-		$post_end =~ s{ ^ [(] (.*) [)] $ }{$1}x;
-	}
+		if ( $parts[0] =~ m{ ^ [(] }x ) {
+			$pre_start = shift @parts;
+			$pre_start =~ s{ ^ [(] (.*) [)] $ }{$1}x;
+		}
 
-	$start = shift @parts;
-	$end   = pop @parts;
+		if ( $parts[-1] =~ m{ ^ [(] }x ) {
+			$post_end = pop @parts;
+			$post_end =~ s{ ^ [(] (.*) [)] $ }{$1}x;
+		}
 
-	$train->{route} = {
-		preStart => $pre_start,
-		start    => $start,
-		middle   => scalar @parts ? [@parts] : undef,
-		end      => $end,
-		postEnd  => $post_end,
-	};
+		$start = shift @parts;
+		$end   = pop @parts;
 
-	for my $k ( keys %{ $train->{route} } ) {
-		if ( not defined $train->{route}{$k} ) {
+		$train->{route} = {
+			preStart => $pre_start,
+			start    => $start,
+			middle   => scalar @parts ? [@parts] : undef,
+			end      => $end,
+			postEnd  => $post_end,
+		};
 
-			# avoid null values (leave out the property instead)
-			delete $train->{route}{$k};
+		for my $k ( keys %{ $train->{route} } ) {
+			if ( not defined $train->{route}{$k} ) {
+
+				# avoid null values (leave out the property instead)
+				delete $train->{route}{$k};
+			}
 		}
 	}
 }
 
-for my $train ( values %map ) {
-	if ( @{ $train->{wagonorder_notes} // [] } == 0 ) {
-		next;
-	}
-	my $first_line  = $train->{wagonorder_notes}[0];
-	my $from_offset = 0;
-	my $to_offset   = 0;
+for my $trains ( values %map ) {
+	for my $train ( @{$trains} ) {
+		if ( @{ $train->{wagonorder_notes} // [] } == 0 ) {
+			next;
+		}
+		my $first_line  = $train->{wagonorder_notes}[0];
+		my $from_offset = 0;
+		my $to_offset   = 0;
 
-	# International trains (e.g. EC 8) are super special and may have another
-	# identifier after the "cycle to" train number.
-	if ( $first_line
-		=~ m{ ^ (?<lead> .*? [^0-9] ) (?<from> \d+ ) (?<middle> [A-Z ]+ ) (?<to> \d+ ) (?: \s+ \d+ )? $ }x
-	  )
-	{
-		$from_offset = length( $+{lead} );
-		$to_offset   = $from_offset + length( $+{from} ) + length( $+{middle} );
-	}
-	if ( not $from_offset ) {
-		next;
-	}
-	for my $i_line ( @{ $train->{wagonorder_notes} } ) {
+       # International trains (e.g. EC 8) are super special and may have another
+       # identifier after the "cycle to" train number.
+		if ( $first_line
+			=~ m{ ^ (?<lead> .*? [^0-9] ) (?<from> \d+ ) (?<middle> [A-Z ]+ ) (?<to> \d+ ) (?: \s+ \d+ )? $ }x
+		  )
+		{
+			$from_offset = length( $+{lead} );
+			$to_offset
+			  = $from_offset + length( $+{from} ) + length( $+{middle} );
+		}
+		if ( not $from_offset ) {
+			next;
+		}
+		my $cycle_id = "unknown";
+		for my $i_line ( @{ $train->{wagonorder_notes} } ) {
 
        # $i_line is an lvalue, so changes in $i_line end up in wagonorder_notes.
        # We don't want that.
-		my $line = substr( $i_line, 0 );
+			my $line = substr( $i_line, 0 );
 
-		# Some cycles do not have a "from" entry, but they do have an odd
-		# F-identifier, which confuses the cycle detection code. remove it.
-		$line =~ s{F[0-9] [0-9]{3}}{.. ...};
-		if ( length($line) <= $from_offset ) {
-			next;
-		}
-		my $umlauf = substr( $line, $from_offset );
-		if ( $umlauf =~ m{ ^ (\d+) }x ) {
-			push( @{ $train->{cycle}{from} }, $1 );
-		}
-		if ( length($line) > $to_offset ) {
-			$umlauf = substr( $line, $to_offset );
-			if ( $umlauf =~ m{ ^ (\d+) }x ) {
-				push( @{ $train->{cycle}{to} }, $1 );
+        # Fx abc appears to identify cycle groups.
+        # It also confuses the cycle detection code for cycles which do not have
+        # a "from" entry.
+			if ( $line =~ s{(F[0-9] [0-9]{3})}{.. ...} ) {
+				$cycle_id = $1;
 			}
-		}
-	}
-	if ( exists $train->{cycle} ) {
-		@{ $train->{cycle}{from} } = uniq @{ $train->{cycle}{from} // [] };
-		@{ $train->{cycle}{to} }   = uniq @{ $train->{cycle}{to}   // [] };
-	}
-}
-
-for my $train ( values %map ) {
-
-	if ( not $train->{details} ) {
-		next;
-	}
-
-	my @details = @{ $train->{details} // [] };
-	my %common_setup;
-	my @setups;
-
-	for my $line (@details) {
-		my %setup;
-		if ( $line =~ m{ Tfz1:(\d+) }x ) {
-			$setup{series} = $1;
-		}
-		if ( $line =~ m{ Tfz2:(\d+) }x ) {
-			$setup{series2} = $1;
-		}
-		if ( $line =~ m{ Hg(\d+) }x ) {
-			$setup{vmax} = 0 + $1;
-		}
-		if ( $line =~ m{ BrH(\d+) }x ) {
-			$setup{brakingPercentage} = 0 + $1;
-		}
-		if ( $line =~ m{ (\d+)m }x ) {
-			$setup{length} = 0 + $1;
-		}
-		if ( %setup and $line =~ m{ ^ \s* ([+]? [A-Z ]{1,7}) }x ) {
-			my $station = $1;
-			$station =~ s{\s+$}{};
-			my $special = ( $station =~ s{^[+]}{} );
-			if ( $ds100_to_name{$station} ) {
-				$station = $ds100_to_name{$station};
-			}
-			if ($special) {
-				$station = "+${station}";
-			}
-			$setup{station} = $station;
-		}
-		push( @setups, {%setup} );
-	}
-
-	for my $key (qw(brakingPercentage length series series2 vmax)) {
-		if ( ( my @uniq = uniq grep { $_ } map { $_->{$key} } @setups ) == 1 ) {
-			$common_setup{$key} = $key =~ m{series} ? $uniq[0] : 0 + $uniq[0];
-		}
-	}
-
-	delete $train->{details};
-	if (%common_setup) {
-		$train->{commonAttr} = {%common_setup};
-	}
-	$train->{attrVariants} = [@setups];
-}
-
-for my $train_number ( keys %map ) {
-	my $wagon_numbers_ok = 1;
-	my $wagon_types_ok   = 1;
-	my $wagon_list_ok    = 1;
-	my %bincount;
-	my %type_by_wagon_number;
-	for my $wagon ( @{ $wagon_map{$train_number} // [] } ) {
-		my ( $wagon_type, $wagon_number ) = @{$wagon};
-		if ( $wagon_type =~ m{ 40[1-9] | 14[67] }x ) {
-
-			# Locomotives do not have a wagon number. That's OK.
-			next;
-		}
-		elsif ( not $wagon_number ) {
-			$wagon_numbers_ok = 0;
-		}
-		else {
-			$bincount{$wagon_number}++;
-			push( @{ $type_by_wagon_number{$wagon_number} }, $wagon_type );
-		}
-	}
-	if ($wagon_numbers_ok) {
-		for my $wagon ( @{ $wagon_map{$train_number} // [] } ) {
-			my ( $wagon_type, $wagon_number ) = @{$wagon};
-
-			my $json_wagon = { type => $wagon_type };
-			if ($wagon_number) {
-				$json_wagon->{number} = 0 + $wagon_number;
-			}
-
-			push( @{ $map{$train_number}{wagons} }, $json_wagon );
-
-			if ( $wagon_type =~ m{ 40[1-9] | 14[67] }x ) {
+			if ( length($line) <= $from_offset ) {
 				next;
 			}
-
-			if ( $bincount{$wagon_number} > 1 ) {
-				$wagon_list_ok = 0;
-				if ( $type_by_wagon_number{$wagon_number}[0] ne
-					$type_by_wagon_number{$wagon_number}[1] )
-				{
-					$wagon_types_ok = 0;
+			my $umlauf = substr( $line, $from_offset );
+			if ( $umlauf =~ m{ ^ (\d+) }x ) {
+				push( @{ $train->{cycle}{$cycle_id}{from} }, $1 );
+			}
+			if ( length($line) > $to_offset ) {
+				$umlauf = substr( $line, $to_offset );
+				if ( $umlauf =~ m{ ^ (\d+) }x ) {
+					push( @{ $train->{cycle}{$cycle_id}{to} }, $1 );
 				}
 			}
 		}
+		for my $cycle ( values %{ $train->{cycle} // {} } ) {
+			@{ $cycle->{from} } = uniq @{ $cycle->{from} // [] };
+			@{ $cycle->{to} }   = uniq @{ $cycle->{to}   // [] };
+		}
 	}
-	if ( not $wagon_types_ok ) {
+}
 
-		# train type may differ depending on date of week or similar. We don't
-		# parse/handle that yet.
-		$map{$train_number}{type} = $map{$train_number}{rawType};
-		delete $map{$train_number}{shortType};
-		delete $map{$train_number}{wagons};
-		delete $map{$train_number}{hasWagon};
+for my $trains ( values %map ) {
+	for my $train ( @{$trains} ) {
+
+		if ( not $train->{details} ) {
+			next;
+		}
+
+		my @details = @{ $train->{details} // [] };
+		my %common_setup;
+		my @setups;
+
+		for my $line (@details) {
+			my %setup;
+			if ( $line =~ m{ Tfz1:(\d+) }x ) {
+				$setup{series} = $1;
+			}
+			if ( $line =~ m{ Tfz2:(\d+) }x ) {
+				$setup{series2} = $1;
+			}
+			if ( $line =~ m{ Hg(\d+) }x ) {
+				$setup{vmax} = 0 + $1;
+			}
+			if ( $line =~ m{ BrH(\d+) }x ) {
+				$setup{brakingPercentage} = 0 + $1;
+			}
+			if ( $line =~ m{ (\d+)m }x ) {
+				$setup{length} = 0 + $1;
+			}
+			if ( %setup and $line =~ m{ ^ \s* ([+]? [A-Z ]{1,7}) }x ) {
+				my $station = $1;
+				$station =~ s{\s+$}{};
+				my $special = ( $station =~ s{^[+]}{} );
+				if ( $ds100_to_name{$station} ) {
+					$station = $ds100_to_name{$station};
+				}
+				if ($special) {
+					$station = "+${station}";
+				}
+				$setup{station} = $station;
+			}
+			push( @setups, {%setup} );
+		}
+
+		for my $key (qw(brakingPercentage length series series2 vmax)) {
+			if ( ( my @uniq = uniq grep { $_ } map { $_->{$key} } @setups )
+				== 1 )
+			{
+				$common_setup{$key}
+				  = $key =~ m{series} ? $uniq[0] : 0 + $uniq[0];
+			}
+		}
+
+		delete $train->{details};
+		if (%common_setup) {
+			$train->{commonAttr} = {%common_setup};
+		}
+		$train->{attrVariants} = [@setups];
 	}
-	elsif ( not $wagon_list_ok ) {
+}
 
-		# train type appears to be correct, but the list contains duplicates
-		# (e.g. due to unhandled schedule variants)
-		delete $map{$train_number}{wagons};
+for my $trains ( values %map ) {
+	for my $train ( @{$trains} ) {
+		my $wagon_numbers_ok = 1;
+		my $wagon_types_ok   = 1;
+		my $wagon_list_ok    = 1;
+		my %bincount;
+		my %type_by_wagon_number;
+		for my $wagon ( @{ $train->{raw_wagons} // [] } ) {
+			my ( $wagon_type, $wagon_number ) = @{$wagon};
+			if ( $wagon_type =~ m{ 40[1-9] | 14[67] }x ) {
+
+				# Locomotives do not have a wagon number. That's OK.
+				next;
+			}
+			elsif ( not $wagon_number ) {
+				$wagon_numbers_ok = 0;
+			}
+			else {
+				$bincount{$wagon_number}++;
+				push( @{ $type_by_wagon_number{$wagon_number} }, $wagon_type );
+			}
+		}
+		if ($wagon_numbers_ok) {
+			for my $wagon ( @{ $train->{raw_wagons} // [] } ) {
+				my ( $wagon_type, $wagon_number ) = @{$wagon};
+
+				my $json_wagon = { type => $wagon_type };
+				if ($wagon_number) {
+					$json_wagon->{number} = 0 + $wagon_number;
+				}
+
+				push( @{ $train->{wagons} }, $json_wagon );
+
+				if ( $wagon_type =~ m{ 40[1-9] | 14[67] }x ) {
+					next;
+				}
+
+				if ( $bincount{$wagon_number} > 1 ) {
+					$wagon_list_ok = 0;
+					if ( $type_by_wagon_number{$wagon_number}[0] ne
+						$type_by_wagon_number{$wagon_number}[1] )
+					{
+						$wagon_types_ok = 0;
+					}
+				}
+			}
+		}
+		if ( not $wagon_types_ok ) {
+
+          # train type may differ depending on date of week or similar. We don't
+          # parse/handle that yet.
+			$train->{type} = $train->{rawType};
+			delete $train->{shortType};
+			delete $train->{wagons};
+			delete $train->{hasWagon};
+		}
+		elsif ( not $wagon_list_ok ) {
+
+			# train type appears to be correct, but the list contains duplicates
+			# (e.g. due to unhandled schedule variants)
+			delete $train->{wagons};
+		}
 	}
 }
 
 # Cleanup
 
-for my $train ( values %map ) {
-	delete $train->{wagonorder_notes};
+for my $trains ( values %map ) {
+	for my $train ( @{$trains} ) {
+		delete $train->{raw_wagons};
+		delete $train->{wagonorder_notes};
+	}
 }
 
-# broken umlauf (indentation changes on page break)
-delete $map{104}{cycle};
-delete $map{1588}{cycle};
-delete $map{1700}{cycle};
-delete $map{77689}{cycle};
-delete $map{78112}{cycle};
+for my $bork (qw(104 1588 1700 77689 78112 939 2310)) {
+	for my $train ( @{ $map{$bork} } ) {
+		delete $train->{cycle};
+	}
+}
 
-# indentation change between consecutive lines. wat.
-delete $map{939}{cycle};
-delete $map{2310}{cycle};
+my %smap;
+for my $train_no ( keys %map ) {
+	if ( @{ $map{$train_no} } == 1 ) {
+		$smap{$train_no} = $map{$train_no}[0];
+	}
+	else {
+		my $latest_valid;
+		my $valid_count = 0;
+		for my $train ( @{ $map{$train_no} } ) {
+			my $is_valid = 0;
+			for my $schedule ( @{ $train->{schedules} // [] } ) {
+				for my $valid ( @{ $schedule->{valid} // [] } ) {
+					if ( range_is_today($valid) ) {
+						$is_valid = 1;
+					}
+				}
+
+				# invalid may override valid for certain days
+				for my $invalid ( @{ $schedule->{invalid} // [] } ) {
+					if ( range_is_today($invalid) ) {
+						$is_valid = 0;
+					}
+				}
+			}
+			if ($is_valid) {
+				$latest_valid = $train;
+				$valid_count++;
+			}
+		}
+		if ( $valid_count == 1 ) {
+			$smap{$train_no} = $latest_valid;
+		}
+	}
+}
 
 # use canonical output (i.e., sort hash keys) to allow for easy diffing.
 say JSON->new->utf8->canonical->encode(
 	{
-		deprecated => \0,
-		source     => $wr_name,
-		train      => {%map},
-		valid      => $valid,
+		deprecated     => \0,
+		source         => $wr_name,
+		train          => {%smap},
+		train_variants => {%map},
+		valid          => $valid,
 	}
 );

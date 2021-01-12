@@ -38,9 +38,16 @@ components:
           description: ISO 8601 interval describing when this train composition dataset is valid
         train:
           type: object
-          description: dict mapping train numbers to train objects
+          description: dict mapping train numbers to probably valid train objects
           additionalProperties:
             $ref: '#/components/schemas/train'
+        train_variants:
+          type: object
+          description: dict mapping train numbers to list of possible train objects
+          additionalProperties:
+            type: array
+            items:
+              $ref: '#/components/schemas/train'
     train:
       type: object
       properties:
@@ -128,15 +135,17 @@ components:
           description: rated maximum speed in km/h
     cycle:
       type: object
-      properties:
-        from:
-          type: array
-          items:
-            type: string
-        to:
-          type: array
-          items:
-            type: string
+      additionalProperties:
+        type: object
+        properties:
+          from:
+            type: array
+            items:
+              type: string
+          to:
+            type: array
+            items:
+              type: string
     hasWagon:
       type: object
       additionalProperties:
