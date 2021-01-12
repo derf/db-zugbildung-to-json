@@ -449,7 +449,8 @@ for my $line (@lines) {
 		}
 	}
 	elsif ( $number and $line =~ m{^\d*\s+[AB][pv]m} ) {
-		if ( $map{$number}{type} eq 'IC2' or $map{$number}{type} eq 'IC2 KISS' )
+		if (   $map{$number}{type} eq 'IC2 Twindexx'
+			or $map{$number}{type} eq 'IC2 KISS' )
 		{
         # Zugbildungsplan go home, you're drunk. Wagons of IC2 double decker
         # trains must start with D (indicating that they double decker
