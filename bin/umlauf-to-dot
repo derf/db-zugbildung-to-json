@@ -110,8 +110,11 @@ sub build_cycle {
 		if ( $train_number != $line ) {
 			push(
 				@output,
-				sprintf( "%s [shape=box];",
-					format_train( $train_number, $map->{$train_number} ) )
+				sprintf(
+"%s [shape=box,href=\"https://lib.finalrewind.org/dbdb/db_umlauf/%s.svg\"];",
+					format_train( $train_number, $map->{$train_number} ),
+					$train_number
+				)
 			);
 		}
 	}
