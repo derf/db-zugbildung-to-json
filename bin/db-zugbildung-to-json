@@ -53,6 +53,12 @@ sub range_is_today {
 	return;
 }
 
+sub weekday_is_today {
+	my ($weekdys) = @_;
+
+	return ( ${ $weekdys->[ $now->day_of_week - 1 ] } == 1 );
+}
+
 my @weekdays = (qw(Mo Di Mi Do Fr Sa So));
 my @months   = (qw(0 I II III IV V VI VII VIII IX X XI XII));
 my %weekday  = map { ( $weekdays[$_] => $_ ) } ( 0 .. $#weekdays );
@@ -786,6 +792,36 @@ for my $train_no ( keys %map ) {
 		}
 		if ( $valid_count == 1 ) {
 			$smap{$train_no} = $latest_valid;
+		}
+		else {
+			$valid_count  = 0;
+			$latest_valid = undef;
+			for my $train ( @{ $map{$train_no} } ) {
+				my $is_valid = 0;
+				for my $schedule ( @{ $train->{schedules} // [] } ) {
+					for my $valid ( @{ $schedule->{valid} // [] } ) {
+						if (    range_is_today($valid)
+							and weekday_is_today( $schedule->{weekdays} ) )
+						{
+							$is_valid = 1;
+						}
+					}
+
+					# invalid may override valid for certain days
+					for my $invalid ( @{ $schedule->{invalid} // [] } ) {
+						if ( range_is_today($invalid) ) {
+							$is_valid = 0;
+						}
+					}
+				}
+				if ($is_valid) {
+					$latest_valid = $train;
+					$valid_count++;
+				}
+			}
+			if ( $valid_count == 1 ) {
+				$smap{$train_no} = $latest_valid;
+			}
 		}
 	}
 }
