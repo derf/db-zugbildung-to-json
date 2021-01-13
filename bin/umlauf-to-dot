@@ -111,8 +111,9 @@ sub build_cycle {
 			push(
 				@output,
 				sprintf(
-"%s [shape=box,href=\"https://lib.finalrewind.org/dbdb/db_umlauf/%s.svg\"];",
+"%s [shape=box,href=\"https://lib.finalrewind.org/dbdb/db_umlauf/%s%s.svg\"];",
 					format_train( $train_number, $map->{$train_number} ),
+					$limit ? "ausschnitt_" : q{},
 					$train_number
 				)
 			);
