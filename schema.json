@@ -1,0 +1,220 @@
+{
+  "$id": "https://git.finalrewind.org/db-zugbildung-to-json/plain/schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "DB Fernverkehr train composition plan",
+  "type": "object",
+  "properties": {
+    "deprecated": {
+      "type": "boolean",
+      "example": false,
+      "description": "if true, this JSON export version is no longer supported and will be removed in the future"
+    },
+    "source": {
+      "type": "string",
+      "example": "2021_ZpAR_Wi_Endstück.pdf",
+      "description": "PDF file used to generate this JSON export"
+    },
+    "valid": {
+      "type": "string",
+      "example": "2020-12-13/2021-06-12",
+      "description": "ISO 8601 interval describing when this train composition dataset is valid"
+    },
+    "train": {
+      "type": "object",
+      "description": "dict mapping train numbers to probably valid train objects",
+      "additionalProperties": {
+        "$ref": "#train"
+      }
+    }
+  },
+  "definitions": {
+    "traincomposition": {
+      "$id": "#traincomposition",
+      "type": "object",
+      "properties": {
+        "train_variants": {
+          "type": "object",
+          "description": "dict mapping train numbers to list of possible train objects",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "$ref": "#train"
+            }
+          }
+        }
+      }
+    },
+    "train": {
+      "$id": "#train",
+      "type": "object",
+      "properties": {
+        "rawType": {
+          "type": "string",
+          "example": "ICE-W",
+          "description": "train type as specified in train composition PDF"
+        },
+        "type": {
+          "type": "string",
+          "example": "ICE 3",
+          "description": "scheduled train type as estimated from rawType and wagon data"
+        },
+        "shortType": {
+          "type": "string",
+          "example": "3",
+          "description": "A short identifier useful to differentiate between train types such as ICE 3 / ICE 3 Redesign or IC1 / IC2 KISS"
+        },
+        "name": {
+          "type": "string",
+          "example": "ICE International",
+          "description": "train name / line name / description as specified in PDF"
+        },
+        "empty": {
+          "type": "boolean",
+          "example": false,
+          "description": "true if this is an empty train without passenger service (\"Leerfahrt\")"
+        },
+        "route": {
+          "$ref": "#route"
+        },
+        "commonAttr": {
+          "$ref": "#trainAttr"
+        },
+        "attrVariants": {
+          "type": "array",
+          "items": {
+            "$ref": "#trainAttr"
+          }
+        },
+        "cycle": {
+          "$ref": "#cycle"
+        },
+        "hasWagon": {
+          "$ref": "#hasWagon"
+        },
+        "wagons": {
+          "$ref": "#wagons"
+        }
+      }
+    },
+    "route": {
+      "$id": "#route",
+      "type": "object",
+      "properties": {
+        "preStart": {
+          "type": "string",
+          "example": "Berlin-Rummelsburg (Triebzuganlage)",
+          "description": "station where the train is prepared / provisioned"
+        },
+        "start": {
+          "type": "string",
+          "example": "Berlin-Gesundbrunnen (05:53)",
+          "description": "first station(s) with passenger service. may contain scheduled departure time."
+        },
+        "middle": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "end": {
+          "type": "string",
+          "example": "München (10:02)",
+          "description": "terminal station(s) with passenger service. may contain scheduled arrival time."
+        },
+        "postEnd": {
+          "type": "string",
+          "description": "station where the train is parked"
+        }
+      }
+    },
+    "trainAttr": {
+      "$id": "#trainAttr",
+      "type": "object",
+      "properties": {
+        "brakingPercentage": {
+          "type": "integer",
+          "example": 177,
+          "description": "Bremshundertstel"
+        },
+        "length": {
+          "type": "integer",
+          "example": 402,
+          "description": "train length (including powercar)"
+        },
+        "series": {
+          "type": "string",
+          "example": "406",
+          "description": "powercar series"
+        },
+        "series2": {
+          "type": "string",
+          "description": "series of second powercar (if present)"
+        },
+        "station": {
+          "type": "string",
+          "example": "Basel SBB",
+          "description": "station name, may be prefixed with a plus sign"
+        },
+        "vmax": {
+          "type": "integer",
+          "example": 300,
+          "description": "rated maximum speed in km/h"
+        }
+      }
+    },
+    "cycle": {
+      "$id": "#cycle",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "to": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "hasWagon": {
+      "$id": "#hasWagon",
+      "type": "object",
+      "additionalProperties": {
+        "type": "boolean",
+        "description": "true iff the wagon or locomotive type described by the key is scheduled for the train"
+      },
+      "example": {
+        "174.5": true,
+        "DApza": true,
+        "DBpbzfa": true,
+        "PBpza": true
+      }
+    },
+    "wagons": {
+      "$id": "#wagons",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "example": "DBpbzfa",
+            "description": "wagon or locomotive type"
+          },
+          "number": {
+            "type": "integer",
+            "example": 1,
+            "description": "wagon number"
+          }
+        }
+      }
+    }
+  }
+}
