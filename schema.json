@@ -23,13 +23,12 @@
       "type": "object",
       "description": "dict mapping train numbers to probably valid train objects",
       "additionalProperties": {
-        "$ref": "#train"
+        "$ref": "#/definitions/train"
       }
     }
   },
   "definitions": {
     "traincomposition": {
-      "$id": "#traincomposition",
       "type": "object",
       "properties": {
         "train_variants": {
@@ -38,14 +37,13 @@
           "additionalProperties": {
             "type": "array",
             "items": {
-              "$ref": "#train"
+              "$ref": "#/definitions/train"
             }
           }
         }
       }
     },
     "train": {
-      "$id": "#train",
       "type": "object",
       "properties": {
         "rawType": {
@@ -74,30 +72,29 @@
           "description": "true if this is an empty train without passenger service (\"Leerfahrt\")"
         },
         "route": {
-          "$ref": "#route"
+          "$ref": "#/definitions/route"
         },
         "commonAttr": {
-          "$ref": "#trainAttr"
+          "$ref": "#/definitions/trainAttr"
         },
         "attrVariants": {
           "type": "array",
           "items": {
-            "$ref": "#trainAttr"
+            "$ref": "#/definitions/trainAttr"
           }
         },
         "cycle": {
-          "$ref": "#cycle"
+          "$ref": "#/definitions/cycle"
         },
         "hasWagon": {
-          "$ref": "#hasWagon"
+          "$ref": "#/definitions/hasWagon"
         },
         "wagons": {
-          "$ref": "#wagons"
+          "$ref": "#/definitions/wagons"
         }
       }
     },
     "route": {
-      "$id": "#route",
       "type": "object",
       "properties": {
         "preStart": {
@@ -128,7 +125,6 @@
       }
     },
     "trainAttr": {
-      "$id": "#trainAttr",
       "type": "object",
       "properties": {
         "brakingPercentage": {
@@ -163,7 +159,6 @@
       }
     },
     "cycle": {
-      "$id": "#cycle",
       "type": "object",
       "additionalProperties": {
         "type": "object",
@@ -184,7 +179,6 @@
       }
     },
     "hasWagon": {
-      "$id": "#hasWagon",
       "type": "object",
       "additionalProperties": {
         "type": "boolean",
@@ -198,7 +192,6 @@
       }
     },
     "wagons": {
-      "$id": "#wagons",
       "type": "array",
       "items": {
         "type": "object",
